@@ -68,8 +68,6 @@ export interface OverviewMetrics {
   p95DurationMs: number | null;
   p99DurationMs: number | null;
   maxDurationMs: number | null;
-  /** Sum of per-record cost over records with pricing; absent when no pricing configured. */
-  estimatedCost?: number;
   tokensPerRequest: number | null;
   outputTokensPerRequest: number | null;
   /** outputTokens / wall seconds (sum of durations); null when no duration. */
@@ -89,7 +87,6 @@ export interface TrendBucket {
   cacheWriteTokens: number;
   outputTokens: number;
   avgDurationMs: number | null;
-  estimatedCost?: number;
 }
 
 /** Per-provider aggregates (architecture doc §3.3). */
@@ -106,7 +103,6 @@ export interface ProviderStats {
   outputTokens: number;
   avgDurationMs: number | null;
   p95DurationMs: number | null;
-  estimatedCost?: number;
 }
 
 /** Per-provider+model aggregates (architecture doc §3.4). */
@@ -131,7 +127,6 @@ export interface SessionStats {
   outputTokens: number;
   cacheHitRate: number | null;
   avgDurationMs: number | null;
-  estimatedCost?: number;
 }
 
 export interface SessionDetail {
@@ -150,23 +145,5 @@ export interface SessionDetail {
     finishReason: string | null;
     usageSource: string;
     totalTokens: number | null;
-    estimatedCost?: number;
   }>;
-}
-
-/** Cost breakdown by bucket (architecture doc §3.8 — always estimated). */
-export interface CostBreakdown {
-  input: number;
-  cacheRead: number;
-  cacheWrite: number;
-  output: number;
-  total: number;
-}
-
-export interface CostOverview {
-  range: TimeRange;
-  total: number;
-  byProvider: Record<string, CostBreakdown>;
-  byModel: Record<string, CostBreakdown>;
-  estimated: true;
 }

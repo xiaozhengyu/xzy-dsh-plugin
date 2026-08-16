@@ -52,7 +52,6 @@ describe('StatisticsService.overview', () => {
     expect(o.tokensPerRequest).toBeCloseTo(170);
     expect(o.outputTokensPerRequest).toBeCloseTo(100 / 3);
     expect(o.outputTokensPerSecond).toBeCloseTo(100 / 6);
-    expect(o.estimatedCost).toBeUndefined();
   });
 
   it('returns nulls for an empty range', () => {
@@ -62,12 +61,6 @@ describe('StatisticsService.overview', () => {
     expect(o.avgDurationMs).toBeNull();
     expect(o.p95DurationMs).toBeNull();
     expect(o.cacheHitRate).toBeNull();
-  });
-
-  it('includes estimated cost when a cost callback is provided', () => {
-    const rows = [row({ id: 1, inputTokens: 1000, outputTokens: 1000, totalTokens: 2000 })];
-    const o = StatisticsService.overview(rows, { from: 0, to: 1 }, () => 0.5);
-    expect(o.estimatedCost).toBe(0.5);
   });
 });
 

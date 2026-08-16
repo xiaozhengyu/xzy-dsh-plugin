@@ -4,7 +4,7 @@ DeepSeek Harness 的 LLM Usage Analytics / Observability 插件（个人项目�
 
 > **当前阶段：Phase 4 — Native UI（完成）**。Phase 1 Collector 归一化调用，Phase 2 SQLite 台账，
 > Phase 3 Query Service，Phase 4 提供 Host Typert 远程服务 + Client `settings.section` 面板
-> （Overview 卡片 / 每日趋势 / Provider·Model / 最近请求 / 会话）。Phase 5 Cost Analytics 待做。
+ > （Overview 卡片 / 每日趋势 / Provider·Model / 最近请求 / 会话）。
 
 ## 设计
 
@@ -31,8 +31,7 @@ UsageLedger           —— SQLite 台账（Phase 2）
   └─ RetentionService —— 定期清理（usage 默认 365d / raw 默认 7d，可配 'forever'）
       ↓
 UsageService          —— Phase 3 查询门面（ledger.query() 获得）
-  ├─ StatisticsService —— 纯聚合数学（overview/trend/provider/model/session + 百分位）
-  ├─ CostService       —— 可插拔定价（provider+model → $/1K tokens，估算成本）
+  └─ StatisticsService —— 纯聚合数学（overview/trend/provider/model/session + 百分位）
   └─ UsageRepository   —— SQL 过滤/排序/分页（listRequests）
 ```
 
@@ -61,7 +60,6 @@ q.listRequests({ from: day.from, to: day.to, status: 'ERROR', sortBy: 'duration'
 q.getRequest(id);                      // 单条请求
 q.listSessions(day);                   // 按 session 聚合（computed view，§8.3 物化表延后）
 q.getSession(sessionId);               // session 详情 + 请求列表
-q.getCostOverview(day);                // 估算成本（需要 CostService，Phase 5 接入 pricing）
 ```
 
 时间范围 `[from, to)`（`to` 排他）；`to` 缺省表示无上界。`usage_session` 目前是查询时计算视图，

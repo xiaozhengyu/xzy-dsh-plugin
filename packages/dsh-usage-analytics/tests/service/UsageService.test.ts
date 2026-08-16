@@ -1,6 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
 import { describe, expect, it } from 'vitest';
-import { CostService, StaticPricingProvider } from '../../src/service/CostService.js';
 import { UsageService } from '../../src/service/UsageService.js';
 import { runMigrations } from '../../src/storage/Migration.js';
 import { UsageLedger } from '../../src/storage/UsageLedger.js';
@@ -16,11 +15,11 @@ interface Env {
   service: UsageService;
 }
 
-function setup(service?: UsageService): Env {
+function setup(): Env {
   const db = new DatabaseSync(':memory:');
   runMigrations(db);
   const repository = new UsageRepository(db);
-  return { db, repository, service: service ?? new UsageService(repository) };
+  return { db, repository, service: new UsageService(repository) };
 }
 
 function seed(env: Env): void {
@@ -139,40 +138,6 @@ describe('UsageService', () => {
       expect(env.service.getSession('nope')).toBeUndefined();
     } finally {
       env.db.close();
-    }
-  });
-
-  it('getCostOverview returns undefined without pricing and aggregates with it', () => {
-    const envNoCost = setup();
-    seed(envNoCost);
-    try {
-      expect(envNoCost.service.getCostOverview(RANGE)).toBeUndefined();
-    } finally {
-      envNoCost.db.close();
-    }
-  });
-
-  it('reports cost when constructed with a CostService', () => {
-    const db = new DatabaseSync(':memory:');
-    runMigrations(db);
-    const repository = new UsageRepository(db);
-    const cost = new CostService({
-      pricing: new StaticPricingProvider({
-        deepseek: { 'deepseek-v4': { input: 0.1, cacheRead: 0.05, cacheWrite: 0, output: 0.2 } },
-      }),
-    });
-    const service = new UsageService(repository, cost);
-    seed({ db, repository, service });
-    try {
-      const overview = service.getCostOverview(RANGE)!;
-      // s1 step0: 100/1000*0.1 + 50/1000*0.2 = 0.01+0.01 = 0.02
-      // s2: 200/1000*0.1 + 100/1000*0.05 + 30/1000*0.2 = 0.02+0.005+0.006 = 0.031
-      expect(overview.total).toBeCloseTo(0.051);
-      expect(overview.byModel['deepseek/deepseek-v4']!.total).toBeCloseTo(0.051);
-      // p2 record has no pricing → excluded
-      expect(overview.byProvider['p2']).toBeUndefined();
-    } finally {
-      db.close();
     }
   });
 

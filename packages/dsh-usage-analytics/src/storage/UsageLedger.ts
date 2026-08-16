@@ -1,6 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { UsageRecord } from '../model/UsageRecord.js';
-import { CostService } from '../service/CostService.js';
 import { RetentionService, type RetentionConfig, type RetentionResult } from '../service/RetentionService.js';
 import { UsageService } from '../service/UsageService.js';
 import { AsyncBatchWriter, defaultTimer, type Timer } from './AsyncBatchWriter.js';
@@ -100,17 +99,11 @@ export class UsageLedger {
     return this.repository.recent(limit);
   }
 
-  /** Phase 3 query facade over this ledger (no pricing by default; Phase 5 wires a pricing provider). */
+  /** Phase 3 query facade over this ledger. */
   query(): UsageService {
     if (!this.queryService) {
       this.queryService = new UsageService(this.repository);
     }
-    return this.queryService;
-  }
-
-  /** Rebuild the query facade with a cost service (idempotent; latest wins). */
-  queryWithCost(cost: CostService): UsageService {
-    this.queryService = new UsageService(this.repository, cost);
     return this.queryService;
   }
 

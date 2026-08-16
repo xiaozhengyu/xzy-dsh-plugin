@@ -23,7 +23,6 @@
 - 请求成功率 / 错误率
 - Session 使用情况
 - Token 趋势
-- 模型成本估算
 - 原始事件追踪
 - 数据导出
 
@@ -157,7 +156,6 @@ UI 和统计必须能够区分真实 Provider usage 与估算值。
 - Average Duration
 - P95 Duration
 - Cache Hit Rate
-- Estimated Cost
 
 支持时间范围：
 
@@ -176,7 +174,6 @@ UI 和统计必须能够区分真实 Provider usage 与估算值。
 
 - Tokens / Day
 - Requests / Day
-- Cost / Day
 - Duration / Day
 - Cache Hit Rate / Day
 
@@ -205,7 +202,6 @@ Cache Write
 Output
 Average Duration
 Success Rate
-Estimated Cost
 ```
 
 ---
@@ -226,7 +222,6 @@ Output
 Average Duration
 P95 Duration
 Success Rate
-Estimated Cost
 ```
 
 ---
@@ -315,40 +310,6 @@ Context Window
 如果存在 Raw Event Reference，则允许查看原始事件。
 
 ---
-
-## 3.8 Cost Analytics
-
-第一版支持可配置价格：
-
-```text
-input
-cache_read
-cache_write
-output
-```
-
-价格配置按：
-
-```text
-provider + model
-```
-
-匹配。
-
-支持：
-
-- Provider Cost
-- Model Cost
-- Daily Cost
-- Monthly Cost
-- Cost / Request
-- Cost / 1K Tokens
-
-成本必须标记为：
-
-`estimated`
-
-因为实际账单可能受 Provider 计费规则、活动价格、区域和套餐影响。
 
 ---
 
@@ -649,30 +610,6 @@ updated_at
 
 ---
 
-## 8.4 model_pricing
-
-```text
-id
-
-provider
-model
-
-input_price
-cache_read_price
-cache_write_price
-output_price
-
-currency
-
-effective_from
-effective_to
-
-created_at
-updated_at
-```
-
-允许一个 Model 存在多个价格版本。
-
 ---
 
 # 9. Token 计算规则
@@ -833,8 +770,6 @@ listSessions(query)
 
 getSession(sessionId)
 
-getCostOverview(range, filters)
-
 exportRequests(query, format)
 ```
 
@@ -911,7 +846,6 @@ Output
 Requests
 Success Rate
 Avg Duration
-Estimated Cost
 ```
 
 ---
@@ -959,10 +893,8 @@ Request List
 ```text
 Data Retention
 Raw Event Retention
-Pricing
 Default Date Range
 Refresh Interval
-Enable Cost Analytics
 ```
 
 ---
@@ -1146,7 +1078,6 @@ EVENT_PARSE_ERROR
 DATABASE_ERROR
 MIGRATION_ERROR
 QUERY_ERROR
-PRICING_ERROR
 UI_ERROR
 ```
 
@@ -1285,19 +1216,16 @@ dsh-usage-analytics/
 │   ├── model/
 │   │   ├── UsageRecord.ts
 │   │   ├── UsageSession.ts
-│   │   ├── RawEvent.ts
-│   │   └── Pricing.ts
+│   │   └── RawEvent.ts
 │   │
 │   ├── storage/
 │   │   ├── Database.ts
 │   │   ├── Migration.ts
-│   │   ├── UsageRepository.ts
-│   │   └── PricingRepository.ts
+│   │   └── UsageRepository.ts
 │   │
 │   ├── service/
 │   │   ├── UsageService.ts
 │   │   ├── StatisticsService.ts
-│   │   ├── CostService.ts
 │   │   └── RetentionService.ts
 │   │
 │   ├── projection/
@@ -1315,8 +1243,7 @@ dsh-usage-analytics/
 │
 ├── migrations/
 │   ├── 001_initial.sql
-│   ├── 002_pricing.sql
-│   └── 003_indexes.sql
+│   └── 002_indexes.sql
 │
 └── tests/
     ├── collector/
@@ -1400,7 +1327,6 @@ EventNormalizer
 - Model
 - Requests
 - Sessions
-- Cost
 
 ---
 
@@ -1418,18 +1344,7 @@ Settings
 
 ---
 
-## Phase 5 — Cost Analytics
-
-实现：
-
-- Pricing
-- Cost Calculation
-- Pricing Version
-- Cost Statistics
-
----
-
-## Phase 6 — Hardening
+## Phase 5 — Hardening
 
 实现：
 
@@ -1455,7 +1370,6 @@ Settings
 - Usage source
 - Status mapping
 - Duration
-- Cost calculation
 - Cache Hit Rate
 - Aggregation
 
@@ -1660,12 +1574,6 @@ Status = ERROR
 Session Statistics
 ```
 
-### 花了多少钱？
-
-```text
-Estimated Cost
-```
-
 ### 某一次请求到底发生了什么？
 
 ```text
@@ -1721,14 +1629,11 @@ V1.0 不做：
                     │ usage_record         │
                     │ usage_session        │
                     │ usage_raw_event      │
-                    │ model_pricing        │
                     └──────────┬───────────┘
                                │
-                    ┌──────────┴───────────┐
-                    │                      │
-                    ▼                      ▼
-             Statistics Service       Cost Service
-                    │                      │
+                               ▼
+                    ┌──────────────────────┐
+                    │ Statistics Service   │
                     └──────────┬───────────┘
                                │
                                ▼
@@ -1765,9 +1670,8 @@ V1.0 不做：
 10. **默认不保存 Prompt / Completion 正文。**
 11. **UI 使用 Harness 原生 UI Cordis 扩展机制。**
 12. **Host / Client 分离。**
-13. **价格数据必须支持版本化。**
-14. **V1.0 以 Analytics 为目标，而不是修改 Agent 行为。**
-15. **所有 Harness API 以当前源码类型定义为最终依据。**
+13. **V1.0 以 Analytics 为目标，而不是修改 Agent 行为。**
+14. **所有 Harness API 以当前源码类型定义为最终依据。**
 
 ---
 
@@ -1814,8 +1718,6 @@ V1.0 不做：
 Usage
 +
 Cache
-+
-Cost
 +
 Latency
 +

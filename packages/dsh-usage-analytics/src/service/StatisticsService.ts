@@ -9,9 +9,6 @@ import type {
 } from '../query/types.js';
 import type { UsageRecordRow } from '../storage/UsageRepository.js';
 
-/** Per-row scalar cost callback (from CostService); undefined rows are uncounted. */
-export type RowCost = (row: UsageRecordRow) => number | undefined;
-
 const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
 const WEEK_MS = 7 * DAY_MS;
@@ -49,16 +46,6 @@ function rate(part: number, total: number): number | null {
   return total > 0 ? part / total : null;
 }
 
-function sumCost(rows: readonly UsageRecordRow[], costFor?: RowCost): number | undefined {
-  if (!costFor) return undefined;
-  let cost = 0;
-  for (const row of rows) {
-    const c = costFor(row);
-    if (c !== undefined) cost += c;
-  }
-  return cost;
-}
-
 function emptyTrendBucket(bucketStart: number): TrendBucket {
   return {
     bucketStart,
@@ -76,11 +63,11 @@ function emptyTrendBucket(bucketStart: number): TrendBucket {
 
 /**
  * Pure aggregation mathematics over usage_record rows. No I/O: every function
- * takes rows (and optionally a per-row cost callback) and returns plain
- * metrics, so the whole service is unit-testable without a database.
+ * takes rows and returns plain metrics, so the whole service is unit-testable
+ * without a database.
  */
 export const StatisticsService = {
-  overview(rows: readonly UsageRecordRow[], range: TimeRange, costFor?: RowCost): OverviewMetrics {
+  overview(rows: readonly UsageRecordRow[], range: TimeRange): OverviewMetrics {
     const requestCount = rows.length;
     const successCount = countStatus(rows, 'SUCCESS');
     const errorCount = countStatus(rows, 'ERROR');
@@ -97,7 +84,6 @@ export const StatisticsService = {
 
     const durations = rows.map((r) => r.durationMs);
     const totalDurationMs = sum(durations);
-    const estimatedCost = sumCost(rows, costFor);
 
     return {
       range,
@@ -121,7 +107,6 @@ export const StatisticsService = {
       p95DurationMs: percentile(durations, 95),
       p99DurationMs: percentile(durations, 99),
       maxDurationMs: durations.length > 0 ? Math.max(...durations) : null,
-      ...(estimatedCost === undefined ? {} : { estimatedCost }),
       tokensPerRequest: rate(totalTokens, requestCount),
       outputTokensPerRequest: rate(outputTokens, requestCount),
       outputTokensPerSecond: totalDurationMs > 0 ? outputTokens / (totalDurationMs / 1000) : null,
@@ -133,7 +118,6 @@ export const StatisticsService = {
     rows: readonly UsageRecordRow[],
     range: TimeRange,
     granularity: Granularity,
-    costFor?: RowCost,
   ): TrendBucket[] {
     const starts = bucketStarts(range, granularity);
     const firstIndex = bucketIndex(starts[0]!, granularity);
@@ -156,10 +140,6 @@ export const StatisticsService = {
       bucket.cacheReadTokens += row.cacheReadTokens ?? 0;
       bucket.cacheWriteTokens += row.cacheWriteTokens ?? 0;
       bucket.outputTokens += row.outputTokens ?? 0;
-      if (costFor) {
-        const c = costFor(row);
-        if (c !== undefined) bucket.estimatedCost = (bucket.estimatedCost ?? 0) + c;
-      }
       const d = durations.get(idx) ?? { sum: 0, count: 0 };
       d.sum += row.durationMs;
       d.count += 1;
@@ -176,25 +156,25 @@ export const StatisticsService = {
     });
   },
 
-  providerStats(rows: readonly UsageRecordRow[], costFor?: RowCost): ProviderStats[] {
+  providerStats(rows: readonly UsageRecordRow[]): ProviderStats[] {
     const groups = groupBy(rows, (r) => r.provider ?? '(unknown)');
     return [...groups.entries()]
-      .map(([provider, group]) => this.providerStat(provider, group, costFor))
+      .map(([provider, group]) => this.providerStat(provider, group))
       .sort((a, b) => b.totalTokens - a.totalTokens);
   },
 
-  modelStats(rows: readonly UsageRecordRow[], costFor?: RowCost): ModelStats[] {
+  modelStats(rows: readonly UsageRecordRow[]): ModelStats[] {
     const groups = groupBy(rows, (r) => `${r.provider ?? '(unknown)'}\u0000${r.model ?? '(unknown)'}`);
     return [...groups.entries()]
       .map(([key, group]) => {
         const [provider, model] = key.split('\u0000');
-        return { ...this.providerStat(provider!, group, costFor), model: model! };
+        return { ...this.providerStat(provider!, group), model: model! };
       })
       .sort((a, b) => b.totalTokens - a.totalTokens);
   },
 
   /** Per-session aggregates (computed view; design §8.3 — materialized table deferred). */
-  sessionStats(rows: readonly UsageRecordRow[], costFor?: RowCost): SessionStats[] {
+  sessionStats(rows: readonly UsageRecordRow[]): SessionStats[] {
     const groups = groupBy(rows, (r) => r.sessionId);
     return [...groups.entries()]
       .map(([sessionId, group]) => {
@@ -207,7 +187,6 @@ export const StatisticsService = {
         const outputTokens = sum(group.map((r) => r.outputTokens ?? 0));
         const startedAt = Math.min(...group.map((r) => r.startedAt));
         const endedAt = Math.max(...group.map((r) => r.completedAt));
-        const estimatedCost = sumCost(group, costFor);
         return {
           sessionId,
           requestCount,
@@ -224,18 +203,16 @@ export const StatisticsService = {
           outputTokens,
           cacheHitRate: rate(cacheReadTokens, inputTokens + cacheReadTokens + cacheWriteTokens),
           avgDurationMs: requestCount > 0 ? sum(group.map((r) => r.durationMs)) / requestCount : null,
-          ...(estimatedCost === undefined ? {} : { estimatedCost }),
         };
       })
       .sort((a, b) => b.totalTokens - a.totalTokens);
   },
 
-  providerStat(provider: string, rows: readonly UsageRecordRow[], costFor?: RowCost): ProviderStats {
+  providerStat(provider: string, rows: readonly UsageRecordRow[]): ProviderStats {
     const requestCount = rows.length;
     const successCount = countStatus(rows, 'SUCCESS');
     const errorCount = countStatus(rows, 'ERROR');
     const durations = rows.map((r) => r.durationMs);
-    const estimatedCost = sumCost(rows, costFor);
     return {
       provider,
       requestCount,
@@ -249,7 +226,6 @@ export const StatisticsService = {
       outputTokens: sum(rows.map((r) => r.outputTokens ?? 0)),
       avgDurationMs: requestCount > 0 ? sum(durations) / requestCount : null,
       p95DurationMs: percentile(durations, 95),
-      ...(estimatedCost === undefined ? {} : { estimatedCost }),
     };
   },
 };

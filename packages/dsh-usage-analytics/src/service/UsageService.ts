@@ -1,5 +1,4 @@
 import type {
-  CostOverview,
   ModelStats,
   OverviewMetrics,
   Paginated,
@@ -11,7 +10,6 @@ import type {
   TrendBucket,
 } from '../query/types.js';
 import { autoGranularity, StatisticsService } from './StatisticsService.js';
-import { CostService } from './CostService.js';
 import type { UsageRecordRow } from '../storage/UsageRepository.js';
 import type { UsageRepository } from '../storage/UsageRepository.js';
 
@@ -22,33 +20,30 @@ import type { UsageRepository } from '../storage/UsageRepository.js';
  * (design §8.3 materialization deferred until performance requires).
  */
 export class UsageService {
-  constructor(
-    private readonly repository: UsageRepository,
-    private readonly cost?: CostService,
-  ) {}
+  constructor(private readonly repository: UsageRepository) {}
 
   /** Dashboard overview cards for a time range (design §3.1/§12). */
   getOverview(range: TimeRange): OverviewMetrics {
     const rows = this.repository.scan(range.from, range.to);
-    return StatisticsService.overview(rows, range, this.cost?.costForRow.bind(this.cost));
+    return StatisticsService.overview(rows, range);
   }
 
-  /** Token/request/cost/duration trend with auto or explicit granularity (design §3.2). */
+  /** Token/request/duration trend with auto or explicit granularity (design §3.2). */
   getTrend(range: TimeRange, granularity = autoGranularity(range)): TrendBucket[] {
     const rows = this.repository.scan(range.from, range.to);
-    return StatisticsService.trend(rows, range, granularity, this.cost?.costForRow.bind(this.cost));
+    return StatisticsService.trend(rows, range, granularity);
   }
 
   /** Per-provider aggregates (design §3.3). */
   getProviderStats(range: TimeRange): ProviderStats[] {
     const rows = this.repository.scan(range.from, range.to);
-    return StatisticsService.providerStats(rows, this.cost?.costForRow.bind(this.cost));
+    return StatisticsService.providerStats(rows);
   }
 
   /** Per-provider+model aggregates (design §3.4). */
   getModelStats(range: TimeRange): ModelStats[] {
     const rows = this.repository.scan(range.from, range.to);
-    return StatisticsService.modelStats(rows, this.cost?.costForRow.bind(this.cost));
+    return StatisticsService.modelStats(rows);
   }
 
   /** Paginated, filtered, sortable request history (design §3.5). */
@@ -65,16 +60,14 @@ export class UsageService {
   /** Per-session aggregates (design §3.6). */
   listSessions(range: TimeRange): SessionStats[] {
     const rows = this.repository.scan(range.from, range.to);
-    return StatisticsService.sessionStats(rows, this.cost?.costForRow.bind(this.cost));
+    return StatisticsService.sessionStats(rows);
   }
 
   /** Session detail: aggregate + its request list. */
   getSession(sessionId: string): SessionDetail | undefined {
     const rows = this.repository.scan(undefined, undefined).filter((r) => r.sessionId === sessionId);
     if (rows.length === 0) return undefined;
-    const stats = StatisticsService.sessionStats(rows, this.cost?.costForRow.bind(this.cost)).find(
-      (s) => s.sessionId === sessionId,
-    );
+    const stats = StatisticsService.sessionStats(rows).find((s) => s.sessionId === sessionId);
     if (!stats) return undefined;
     return {
       session: stats,
@@ -94,15 +87,7 @@ export class UsageService {
           finishReason: row.finishReason,
           usageSource: row.usageSource,
           totalTokens: row.totalTokens,
-          ...(this.cost ? { estimatedCost: this.cost.costForRow(row) } : {}),
         })),
     };
-  }
-
-  /** Estimated cost overview (design §3.8); undefined when no pricing configured. */
-  getCostOverview(range: TimeRange): CostOverview | undefined {
-    if (!this.cost) return undefined;
-    const rows = this.repository.scan(range.from, range.to);
-    return this.cost.overview(rows, range);
   }
 }
