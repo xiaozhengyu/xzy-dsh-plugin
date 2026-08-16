@@ -394,7 +394,7 @@ dshHomePath(...segments: string[]): string;  // 拼接在解析后的 home 上
 
 - Frame 座位：`root`（禁止注册——会替换整个 AppFrame）、`sidebar`、`conversation`、`details`（均为 single，注册即替换已占用者——文档化的反模式）、`shell.overlay`（list/root 加法浮层）。
 - 最接近"页面"的座位：`conversation.view`（list/session 页签，trajectory 即此模式：`id: 'trajectory'`, `order: 10`）与 `settings.section`（list/root 模态内整页）。新 Slot 只能通过已占用条目的 `children:` 声明，不能独立声明。
-- → **Phase 4 Dashboard 的现实方案**：(a) `conversation.view` 注册会话内 Usage 页签（可复用 session 标准 kit：`useSession`/`useProjection`/`sessionId`）；(b) `settings.section` 注册 root 作用域统计页（只拿到全局 kit，数据需经 Typert RPC 拉取）；(c) `shell.overlay` 浮层。最终取舍留待 Phase 4，在此锁定存在性。
+- → **Phase 4 Dashboard 的现实方案**：(a) `conversation.view` 注册会话内 Usage 页签（可复用 session 标准 kit：`useSession`/`useProjection`/`sessionId`）；(b) `settings.section` 注册 root 作用域统计页（只拿到全局 kit，数据需经 Typert RPC 拉取）；(c) `shell.overlay` 浮层。**已落地组合：`sidebar.footer.action` 按钮 + `shell.overlay` 全屏弹窗（见 §7.2.1）**。
 
 标准注册模式（目标 slot 由其他包声明时必须与 `slots.inject` 配对，保证声明期顺序安全）：
 
@@ -407,6 +407,45 @@ ctx.slots.inject('settings.section', () => ctx.slots.register({
   label: () => 'Usage Analytics',
   inject: injected,             // 可选：注入面（hooks 舱）
 }, AnalyticsSection));
+```
+
+### 7.2.1 已验证组合：侧栏按钮 + `shell.overlay` 全屏弹窗（dsh-usage-analytics 实测）
+
+设置弹窗固定 800px（`dsh-client-ui-settings-general` SettingsRoot 的 `.VOzbGW_panel`：
+`width: 800px; max-width: calc(100vw - 48px)`，z-index 1000，导航栏 188px），
+不适合放宽表页面。实测可用组合：
+
+- **入口**：`sidebar.footer.action`（由 dsh-client-ui-sidebar 的 `sidebar` 条目声明，
+  kind `list` / scope `root`，渲染在设置齿轮上方）；条目只接收 owner prop `{ wide: boolean }`
+  （侧栏是否展开）。注册方式与 settings.section 相同：`slots.inject('sidebar.footer.action', ...)`。
+- **弹窗**：`shell.overlay`（AppFrame 声明，kind `list` / scope `root`）——
+  渲染在 `.overlayLayer`（z-index 20，`pointer-events: none`，直接子元素恢复 `auto`）；
+  条目常驻挂载，关闭时组件返回 `null` 即可。宽度完全自控（实测 `min(1200px, calc(100vw - 64px))`）。
+- **打开 / 关闭**：模块级单例 store（open 布尔 + subscribe）+ `useSyncExternalStore`；
+  侧栏按钮写入 open，弹窗订阅；关闭 = 右上角 × / 点遮罩 / ESC。
+- **从设置内打开的限制**：设置弹窗 z-index 1000 高于 overlay 层 20，从设置内打开大弹窗必须先关闭设置；
+  `settings.section` 条目会收到 owner prop `close`（设置弹窗的关闭函数）。
+- **类型**：`slots.inject` 的 key 需要 SlotMap 增强，来自声明方 client 类型：
+  `@deepseek-ai/dsh-client-ui-sidebar/client`、`@deepseek-ai/dsh-client-ui-layout/client`
+  （在本仓库 tsconfig paths 中按惯例追加指向本机 DSH 安装的路径）。
+
+标准注册示例：
+
+```js
+// 侧栏按钮（展开态 wide=true 显示文字，收起态仅图标）
+ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
+  name: 'sidebar.footer.action',
+  id: 'usage-analytics-open',
+  order: 0,
+}, SidebarUsageButton));
+
+// 全屏弹窗（关闭时组件返回 null）
+ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+  name: 'shell.overlay',
+  id: 'usage-analytics-overlay',
+  order: 100,
+  inject: () => ({ usage }),
+}, UsageOverlay));
 ```
 
 ### 7.3 Host↔Client RPC（打包插件用 Typert，非 harness.handle）

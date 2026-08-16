@@ -65,6 +65,17 @@ q.getSession(sessionId);               // session 详情 + 请求列表
 时间范围 `[from, to)`（`to` 排他）；`to` 缺省表示无上界。`usage_session` 目前是查询时计算视图，
 未物化为表（设计 §8.3 的物化延后到性能需要时）。
 
+## UI 入口（侧栏按钮 + 全屏弹窗）
+
+唯一入口是侧栏底部 `sidebar.footer.action` 的「用量」按钮（展开态显示图标 + 文字，收起态仅图标），
+点击打开 `shell.overlay` 全屏弹窗（最大 1200px 宽），内含「概览 / 请求历史」两个 Tab；
+关闭方式：右上角 ×、点遮罩、ESC。
+
+设置弹窗固定 800px 且 z-index 高于 overlay 层，因此本插件不再使用 `settings.section` 入口。
+相关文件：`src/client/SidebarUsageButton.tsx`（按钮）、`src/client/UsageOverlay.tsx`（弹窗）、
+`src/client/overlay-store.ts`（开关状态）、`src/client/Dashboard.tsx`（Tab 壳，弹窗模式接收 `onClose`）。
+此模式的实现细节见 `doc/harness-api.md §7.2.1`。
+
 ## 配置（profile cordis.patch.yml insert 行）
 
 ```yaml
