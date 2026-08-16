@@ -50,3 +50,27 @@ export type { AsyncBatchWriterOptions, Timer } from './storage/AsyncBatchWriter.
 // Services.
 export { RetentionService, retentionCutoff } from './service/RetentionService.js';
 export type { RetentionConfig, RetentionDays, RetentionResult } from './service/RetentionService.js';
+export { StatisticsService, autoGranularity, percentile } from './service/StatisticsService.js';
+export type { RowCost } from './service/StatisticsService.js';
+export { CostService, CostMath, StaticPricingProvider } from './service/CostService.js';
+export type { CostServiceOptions, Pricing, PricingProvider } from './service/CostService.js';
+export { UsageService } from './service/UsageService.js';
+
+// Query vocabulary (Phase 3).
+export type {
+  CostBreakdown,
+  CostOverview,
+  Granularity,
+  ModelStats,
+  OverviewMetrics,
+  Paginated,
+  ProviderStats,
+  RequestFilters,
+  RequestQuery,
+  RequestSortField,
+  SessionDetail,
+  SessionStats,
+  SortOrder,
+  TimeRange,
+  TrendBucket,
+} from './query/types.js';

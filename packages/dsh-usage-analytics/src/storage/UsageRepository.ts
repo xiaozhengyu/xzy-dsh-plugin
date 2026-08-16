@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { UsageRecord } from '../model/UsageRecord.js';
+import type { RequestQuery, RequestSortField, SortOrder } from '../query/types.js';
 
 /** A usage_record row as read back from SQLite (snake_case → camelCase). */
 export interface UsageRecordRow {
@@ -121,6 +122,84 @@ export class UsageRepository {
     return rows.map(rowToUsageRecordRow);
   }
 
+  /** All rows with `started_at` in [startMs, endMs); unbounded when a bound is omitted. */
+  scan(startMs?: number, endMs?: number): UsageRecordRow[] {
+    const conditions: string[] = [];
+    const params: Array<number> = [];
+    if (startMs !== undefined) {
+      conditions.push('started_at >= ?');
+      params.push(startMs);
+    }
+    if (endMs !== undefined) {
+      conditions.push('started_at < ?');
+      params.push(endMs);
+    }
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const rows = this.db.prepare(`SELECT * FROM usage_record ${where} ORDER BY id`).all(...params) as Array<
+      Record<string, unknown>
+    >;
+    return rows.map(rowToUsageRecordRow);
+  }
+
+  /** One record by primary key. */
+  getById(id: number): UsageRecordRow | undefined {
+    const row = this.db.prepare('SELECT * FROM usage_record WHERE id = ?').get(id) as
+      | Record<string, unknown>
+      | undefined;
+    return row ? rowToUsageRecordRow(row) : undefined;
+  }
+
+  /**
+   * Filtered, sorted, paginated request listing. All filter values are bound
+   * parameters; only whitelisted column names can be sorted on.
+   */
+  queryRequests(query: RequestQuery): { rows: UsageRecordRow[]; total: number } {
+    const conditions: string[] = [];
+    const params: Array<string | number> = [];
+    if (query.from !== undefined) {
+      conditions.push('started_at >= ?');
+      params.push(query.from);
+    }
+    if (query.to !== undefined) {
+      conditions.push('started_at < ?');
+      params.push(query.to);
+    }
+    if (query.provider !== undefined) {
+      conditions.push('provider = ?');
+      params.push(query.provider);
+    }
+    if (query.model !== undefined) {
+      conditions.push('model = ?');
+      params.push(query.model);
+    }
+    if (query.status !== undefined) {
+      conditions.push('status = ?');
+      params.push(query.status);
+    }
+    if (query.sessionId !== undefined) {
+      conditions.push('session_id = ?');
+      params.push(query.sessionId);
+    }
+    if (query.search !== undefined && query.search.length > 0) {
+      conditions.push('(session_id LIKE ? OR provider LIKE ? OR model LIKE ? OR error_message LIKE ?)');
+      const pattern = `%${query.search}%`;
+      params.push(pattern, pattern, pattern, pattern);
+    }
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const total = (
+      this.db.prepare(`SELECT COUNT(*) AS c FROM usage_record ${where}`).get(...params) as { c: number }
+    ).c;
+
+    const sortColumn = SORT_COLUMNS[query.sortBy ?? 'time'];
+    const order: SortOrder = query.order === 'asc' ? 'asc' : 'desc';
+    const offset = Math.max(0, query.offset ?? 0);
+    const limit = Math.min(500, Math.max(1, query.limit ?? 50));
+    const rows = this.db
+      .prepare(`SELECT * FROM usage_record ${where} ORDER BY ${sortColumn} ${order === 'asc' ? 'ASC' : 'DESC'}, id ${order === 'asc' ? 'ASC' : 'DESC'} LIMIT ? OFFSET ?`)
+      .all(...params, limit, offset) as Array<Record<string, unknown>>;
+    return { rows: rows.map(rowToUsageRecordRow), total };
+  }
+
   /** Delete usage records whose completion time precedes the cutoff; returns deleted count. */
   deleteRecordsBefore(cutoffMs: number): number {
     return Number(this.db.prepare('DELETE FROM usage_record WHERE completed_at < ?').run(cutoffMs).changes);
@@ -131,6 +210,12 @@ export class UsageRepository {
     return Number(this.db.prepare('DELETE FROM usage_raw_event WHERE event_time < ?').run(cutoffMs).changes);
   }
 }
+
+const SORT_COLUMNS: Record<RequestSortField, string> = {
+  time: 'started_at',
+  duration: 'duration_ms',
+  totalTokens: 'total_tokens',
+};
 
 function rowToUsageRecordRow(row: Record<string, unknown>): UsageRecordRow {
   return {

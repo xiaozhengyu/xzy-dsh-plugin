@@ -1,6 +1,8 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { UsageRecord } from '../model/UsageRecord.js';
+import { CostService } from '../service/CostService.js';
 import { RetentionService, type RetentionConfig, type RetentionResult } from '../service/RetentionService.js';
+import { UsageService } from '../service/UsageService.js';
 import { AsyncBatchWriter, defaultTimer, type Timer } from './AsyncBatchWriter.js';
 import { openDatabase, type JournalMode } from './Database.js';
 import { runMigrations } from './Migration.js';
@@ -40,6 +42,7 @@ export class UsageLedger {
   private readonly timer: Timer;
   private retentionTimer?: { dispose(): void };
   private disposed = false;
+  private queryService?: UsageService;
 
   private constructor(db: DatabaseSync, config: UsageLedgerConfig) {
     this.db = db;
@@ -95,6 +98,20 @@ export class UsageLedger {
 
   recent(limit: number): UsageRecordRow[] {
     return this.repository.recent(limit);
+  }
+
+  /** Phase 3 query facade over this ledger (no pricing by default; Phase 5 wires a pricing provider). */
+  query(): UsageService {
+    if (!this.queryService) {
+      this.queryService = new UsageService(this.repository);
+    }
+    return this.queryService;
+  }
+
+  /** Rebuild the query facade with a cost service (idempotent; latest wins). */
+  queryWithCost(cost: CostService): UsageService {
+    this.queryService = new UsageService(this.repository, cost);
+    return this.queryService;
   }
 
   /** Flush + close. Idempotent; safe to call from a fiber disposer. */
