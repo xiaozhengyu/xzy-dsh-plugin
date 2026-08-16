@@ -34,3 +34,19 @@ export type {
   UsageSource,
 } from './model/types.js';
 export { tokenUsageToBuckets } from './model/types.js';
+
+// Storage (Phase 2: Usage Ledger).
+export { UsageLedger } from './storage/UsageLedger.js';
+export type { UsageLedgerConfig } from './storage/UsageLedger.js';
+export { openDatabase, USAGE_ANALYTICS_APPLICATION_ID } from './storage/Database.js';
+export type { DatabaseOptions, JournalMode } from './storage/Database.js';
+export { MIGRATIONS, runMigrations } from './storage/Migration.js';
+export type { Migration } from './storage/Migration.js';
+export { UsageRepository } from './storage/UsageRepository.js';
+export type { RawEventInput, UsageRecordRow } from './storage/UsageRepository.js';
+export { AsyncBatchWriter, defaultTimer } from './storage/AsyncBatchWriter.js';
+export type { AsyncBatchWriterOptions, Timer } from './storage/AsyncBatchWriter.js';
+
+// Services.
+export { RetentionService, retentionCutoff } from './service/RetentionService.js';
+export type { RetentionConfig, RetentionDays, RetentionResult } from './service/RetentionService.js';
