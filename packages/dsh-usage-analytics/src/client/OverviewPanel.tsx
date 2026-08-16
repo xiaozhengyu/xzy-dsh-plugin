@@ -52,6 +52,17 @@ export function OverviewPanel(props: OverviewPanelProps): React.ReactElement {
   const [preset, setPreset] = React.useState<PresetKey>('7d');
   const [data, setData] = React.useState<OverviewData | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [autoRefresh, setAutoRefresh] = React.useState(false);
+  const [refreshTick, setRefreshTick] = React.useState(0);
+  const hasDataRef = React.useRef(false);
+  hasDataRef.current = data !== null;
+
+  // 自动刷新：开启后每 30s 触发一次重拉。
+  React.useEffect(() => {
+    if (!autoRefresh) return;
+    const timer = setInterval(() => setRefreshTick((tick) => tick + 1), 30_000);
+    return () => clearInterval(timer);
+  }, [autoRefresh]);
 
   React.useEffect(() => {
     if (!usage) {
@@ -62,7 +73,6 @@ export function OverviewPanel(props: OverviewPanelProps): React.ReactElement {
     const range = presetRange(preset);
     let cancelled = false;
     setError(null);
-    setData(null);
     void (async () => {
       try {
         const [overview, trend, providers, models, requestPage, sessions] = await Promise.all([
@@ -77,13 +87,14 @@ export function OverviewPanel(props: OverviewPanelProps): React.ReactElement {
         setData({ overview, trend, providers, models, requests: requestPage.items, sessions });
       } catch (caught) {
         if (cancelled) return;
-        setError(caught instanceof Error ? caught.message : String(caught));
+        // 已有数据时静默失败（保留旧视图），仅首载失败展示错误。
+        if (!hasDataRef.current) setError(caught instanceof Error ? caught.message : String(caught));
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [usage, preset]);
+  }, [usage, preset, refreshTick]);
 
   const maxTrend = data ? Math.max(1, ...data.trend.map((b) => b.totalTokens)) : 1;
 
@@ -92,16 +103,26 @@ export function OverviewPanel(props: OverviewPanelProps): React.ReactElement {
     null,
     React.createElement(
       'div',
-      { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 } },
+      { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, marginLeft: 'auto' } },
       React.createElement(
         'div',
-        { style: { marginLeft: 'auto' } },
+        { style: { display: 'flex', alignItems: 'center', gap: 8 } },
         PRESET_KEYS.map((key) =>
           React.createElement(
             'button',
             { key: key, style: btnStyle(preset === key), onClick: () => setPreset(key) },
             presetLabel(key),
           ),
+        ),
+        React.createElement(
+          'button',
+          { style: btnStyle(autoRefresh), onClick: () => setAutoRefresh((value) => !value), title: '开启后每 30 秒自动刷新' },
+          autoRefresh ? '自动刷新：开' : '自动刷新',
+        ),
+        React.createElement(
+          'button',
+          { style: btnStyle(false), onClick: () => setRefreshTick((tick) => tick + 1), title: '立即重新加载' },
+          '刷新',
         ),
       ),
     ),
