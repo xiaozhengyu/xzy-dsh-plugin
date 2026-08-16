@@ -2,9 +2,9 @@
 
 DeepSeek Harness 的 LLM Usage Analytics / Observability 插件（个人项目）。
 
-> **当前阶段：Phase 3 — Query Service（完成）**。Phase 1 Collector 从 `session/event` 归一化调用，
-> Phase 2 异步批量写入 SQLite 台账，Phase 3 提供统计/查询门面（Overview/Trend/Provider/Model/
-> Requests/Sessions/Cost）。UI 见 Phase 4。
+> **当前阶段：Phase 4 — Native UI（完成）**。Phase 1 Collector 归一化调用，Phase 2 SQLite 台账，
+> Phase 3 Query Service，Phase 4 提供 Host Typert 远程服务 + Client `settings.section` 面板
+> （Overview 卡片 / 每日趋势 / Provider·Model / 最近请求 / 会话）。Phase 5 Cost Analytics 待做。
 
 ## 设计
 

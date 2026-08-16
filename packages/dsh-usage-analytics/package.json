@@ -1,6 +1,6 @@
 {
   "name": "dsh-usage-analytics",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "LLM Usage Analytics / Observability plugin for DeepSeek Harness. Phase 1: session/event collector producing normalized per-request UsageRecords (no persistence yet).",
   "type": "module",
   "main": "lib/index.js",
