@@ -26,10 +26,13 @@ await build({
   target: 'es2022',
   minify: false,
   banner: {
-    js: `window.__ModuleLoader__.load({ id: 'dsh-usage-analytics', factory: (require) => {`,
+    js: `window.__ModuleLoader__.load({ id: 'dsh-usage-analytics', factory: (require) => {
+var module = { exports: {} };
+var exports = module.exports;
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });`,
   },
   footer: {
-    js: `} });`,
+    js: `return module.exports; } });`,
   },
   external: [
     'react',

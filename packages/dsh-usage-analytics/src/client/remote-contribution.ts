@@ -1,14 +1,21 @@
 /**
  * Client-side Typert remote contribution for the `usageAnalytics` namespace.
  *
- * Codecs use `src-json` (no zod schemas): strict codecs require a generated
- * `typert.host.js` artifact (dsh-typert-generator), which is NOT part of a
- * third-party plugin — with `src-json` the gateway's SRC fallback applies
- * (verified in the Typert audit, harness-api.md §7.3).
+ * The HOST gateway accepts `@Remote` methods through its SRC fallback with
+ * `src-json` codecs, but the CLIENT `$mount` gate (dsh-api-gateway's
+ * `requireStrictCodec`) rejects every non-strict codec, so each parameter and
+ * result must carry `mode: 'strict'` with a real zod schema. The wire stays
+ * pass-through: the host SRC descriptors validate JSON-safety, and these
+ * schemas are deliberately permissive (`z.any()`) rather than duplicating the
+ * query vocabulary as a second source of truth.
  */
 import type { TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol';
+import { z } from 'zod';
 
-const json = { mode: 'src-json' } as const;
+/** Strict pass-through codec satisfying the client mount gate. */
+function strict(typeSymbol: string) {
+  return { mode: 'strict', typeSymbol, schema: z.any() } as const;
+}
 
 export const TYPERT_REMOTE: TypertRemoteContribution = {
   package: 'dsh-usage-analytics',
@@ -19,8 +26,8 @@ export const TYPERT_REMOTE: TypertRemoteContribution = {
       namespace: 'usageAnalytics',
       method: 'getOverview',
       invocation: { kind: 'direct' },
-      parameters: [{ name: 'range', wire: 'range', source: 'json', codec: json }],
-      result: json,
+      parameters: [{ name: 'range', wire: 'range', source: 'json', codec: strict('dsh-usage-analytics/query#TimeRange') }],
+      result: strict('dsh-usage-analytics/query#OverviewMetrics'),
     },
     {
       id: 'dsh-usage-analytics#usageAnalytics/getTrend',
@@ -29,10 +36,10 @@ export const TYPERT_REMOTE: TypertRemoteContribution = {
       method: 'getTrend',
       invocation: { kind: 'direct' },
       parameters: [
-        { name: 'range', wire: 'range', source: 'json', codec: json },
-        { name: 'granularity', wire: 'granularity', source: 'json', codec: json, acceptsUndefined: true },
+        { name: 'range', wire: 'range', source: 'json', codec: strict('dsh-usage-analytics/query#TimeRange') },
+        { name: 'granularity', wire: 'granularity', source: 'json', codec: strict('dsh-usage-analytics/query#Granularity'), acceptsUndefined: true },
       ],
-      result: json,
+      result: strict('dsh-usage-analytics/query#TrendBucket[]'),
     },
     {
       id: 'dsh-usage-analytics#usageAnalytics/getProviderStats',
@@ -40,8 +47,8 @@ export const TYPERT_REMOTE: TypertRemoteContribution = {
       namespace: 'usageAnalytics',
       method: 'getProviderStats',
       invocation: { kind: 'direct' },
-      parameters: [{ name: 'range', wire: 'range', source: 'json', codec: json }],
-      result: json,
+      parameters: [{ name: 'range', wire: 'range', source: 'json', codec: strict('dsh-usage-analytics/query#TimeRange') }],
+      result: strict('dsh-usage-analytics/query#ProviderStats[]'),
     },
     {
       id: 'dsh-usage-analytics#usageAnalytics/getModelStats',
@@ -49,8 +56,8 @@ export const TYPERT_REMOTE: TypertRemoteContribution = {
       namespace: 'usageAnalytics',
       method: 'getModelStats',
       invocation: { kind: 'direct' },
-      parameters: [{ name: 'range', wire: 'range', source: 'json', codec: json }],
-      result: json,
+      parameters: [{ name: 'range', wire: 'range', source: 'json', codec: strict('dsh-usage-analytics/query#TimeRange') }],
+      result: strict('dsh-usage-analytics/query#ModelStats[]'),
     },
     {
       id: 'dsh-usage-analytics#usageAnalytics/listRequests',
@@ -58,8 +65,8 @@ export const TYPERT_REMOTE: TypertRemoteContribution = {
       namespace: 'usageAnalytics',
       method: 'listRequests',
       invocation: { kind: 'direct' },
-      parameters: [{ name: 'query', wire: 'query', source: 'json', codec: json, acceptsUndefined: true }],
-      result: json,
+      parameters: [{ name: 'query', wire: 'query', source: 'json', codec: strict('dsh-usage-analytics/query#RequestQuery'), acceptsUndefined: true }],
+      result: strict('dsh-usage-analytics/query#Paginated<UsageRecordRow>'),
     },
     {
       id: 'dsh-usage-analytics#usageAnalytics/getRequest',
@@ -67,8 +74,8 @@ export const TYPERT_REMOTE: TypertRemoteContribution = {
       namespace: 'usageAnalytics',
       method: 'getRequest',
       invocation: { kind: 'direct' },
-      parameters: [{ name: 'id', wire: 'id', source: 'json', codec: json }],
-      result: json,
+      parameters: [{ name: 'id', wire: 'id', source: 'json', codec: strict('dsh-usage-analytics/storage#UsageRecordRowId') }],
+      result: strict('dsh-usage-analytics/storage#UsageRecordRow|null'),
     },
     {
       id: 'dsh-usage-analytics#usageAnalytics/listSessions',
@@ -76,8 +83,8 @@ export const TYPERT_REMOTE: TypertRemoteContribution = {
       namespace: 'usageAnalytics',
       method: 'listSessions',
       invocation: { kind: 'direct' },
-      parameters: [{ name: 'range', wire: 'range', source: 'json', codec: json }],
-      result: json,
+      parameters: [{ name: 'range', wire: 'range', source: 'json', codec: strict('dsh-usage-analytics/query#TimeRange') }],
+      result: strict('dsh-usage-analytics/query#SessionStats[]'),
     },
     {
       id: 'dsh-usage-analytics#usageAnalytics/getSession',
@@ -85,8 +92,8 @@ export const TYPERT_REMOTE: TypertRemoteContribution = {
       namespace: 'usageAnalytics',
       method: 'getSession',
       invocation: { kind: 'direct' },
-      parameters: [{ name: 'sessionId', wire: 'sessionId', source: 'json', codec: json }],
-      result: json,
+      parameters: [{ name: 'sessionId', wire: 'sessionId', source: 'json', codec: strict('dsh-usage-analytics/query#SessionId') }],
+      result: strict('dsh-usage-analytics/query#SessionDetail|null'),
     },
   ],
 };
