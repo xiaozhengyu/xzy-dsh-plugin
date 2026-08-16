@@ -2,7 +2,7 @@
 
 | 插件 | 说明 | 状态 |
 |---|---|---|
-| [dsh-usage-analytics](packages/dsh-usage-analytics) | DeepSeek Harness 的 LLM Usage Analytics / Observability 插件 | Phase 2（SQLite Usage Ledger 完成） |
+| [dsh-usage-analytics](packages/dsh-usage-analytics) | DeepSeek Harness 的 LLM Usage Analytics / Observability 插件 | Phase 3（Query Service 完成） |
 
 ## 插件介绍
 
