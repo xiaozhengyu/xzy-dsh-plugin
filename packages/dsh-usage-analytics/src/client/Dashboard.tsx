@@ -10,6 +10,8 @@ import type { UsageRemote } from './client-types.js';
 
 export interface DashboardProps {
   usage: UsageRemote | undefined;
+  /** 传入时在标题栏右侧显示关闭按钮（全屏弹窗模式）。 */
+  onClose?: () => void;
 }
 
 type TabKey = 'overview' | 'requests';
@@ -20,7 +22,7 @@ const TABS: Array<{ key: TabKey; label: string }> = [
 ];
 
 export function Dashboard(props: DashboardProps): React.ReactElement {
-  const { usage } = props;
+  const { usage, onClose } = props;
   const [tab, setTab] = React.useState<TabKey>('overview');
 
   return React.createElement(
@@ -40,6 +42,18 @@ export function Dashboard(props: DashboardProps): React.ReactElement {
             t.label,
           ),
         ),
+        onClose
+          ? React.createElement(
+              'button',
+              {
+                style: { ...btnStyle(false), marginLeft: 12, fontSize: 16, lineHeight: 1 },
+                onClick: onClose,
+                title: '关闭',
+                type: 'button',
+              },
+              '×',
+            )
+          : null,
       ),
     ),
     tab === 'overview'

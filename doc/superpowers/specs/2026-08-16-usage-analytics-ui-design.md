@@ -9,7 +9,7 @@
 当前用量分析页面只有英文内容、菜单名为 `Usage Analytics`，且请求历史只有“最近 10 条”，
 没有筛选、排序、分页。本轮目标：
 
-1. 菜单改名为「用量分析」。
+1. 侧栏底部新增「用量」按钮作为唯一入口（设置页里的「用量分析」菜单移除）。
 2. 页面内容全部中文化。
 3. 页面内改为 Tab 结构：「概览」与「请求历史」。
 4. 请求历史支持时间预设、Provider / Model / 状态筛选、关键词搜索、列排序、分页。
@@ -22,12 +22,17 @@
 
 ## 3. 页面结构
 
-`settings.section` 座位内渲染一个标题「用量分析」+ 两个 Tab：
+唯一入口：侧栏底部 `sidebar.footer.action` 的「用量」按钮
+（展开态显示图标 + 文字，收起态仅图标）。点击打开 `shell.overlay` 全屏弹窗
+（宽度 `min(1200px, calc(100vw - 64px))`、高度 `min(900px, calc(100vh - 96px))`），
+弹窗内渲染标题「用量分析」+ 两个 Tab：
 
 ```text
 用量分析
 [ 概览 ] [ 请求历史 ]
 ```
+
+关闭方式：右上角 ×、点击遮罩、ESC。设置页不再注册 `settings.section` 入口。
 
 ### 3.1 概览 Tab
 
@@ -101,9 +106,13 @@
 
 ## 6. 实现说明
 
-- `src/client/client.ts`：`label: () => '用量分析'`。
+- `src/client/client.ts`：注册 `sidebar.footer.action`（按钮）与 `shell.overlay`（弹窗），
+  移除原 `settings.section` 注册。
+- `src/client/SidebarUsageButton.tsx`：侧栏按钮，点击写入 overlay 开关。
+- `src/client/UsageOverlay.tsx` + `overlay-store.ts`：全屏弹窗与开关状态（模块级单例 +
+  `useSyncExternalStore`）。
 - `src/client/Dashboard.tsx`：改为 Tab 壳，拆分出 `OverviewPanel.tsx`（现有内容迁移）与
-  `RequestHistory.tsx`（新增）；共享格式化函数抽到 `format.ts`。
+  `RequestHistory.tsx`（新增）；共享格式化函数抽到 `shared.ts`；弹窗模式下接收 `onClose`。
 - 样式沿用 Harness 主题变量（`--theme-*`），不引入第三方库。
 - 客户端 bundle 由 `scripts/bundle-client.mjs` 重新构建。
 

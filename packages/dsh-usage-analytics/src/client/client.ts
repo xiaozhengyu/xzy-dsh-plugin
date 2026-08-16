@@ -6,17 +6,19 @@
  *    `ctx.remote.$mount(TYPERT_REMOTE)` so `ctx.remote.usageAnalytics.*` is
  *    callable (mount installs the concrete namespace methods + the
  *    `remote.usageAnalytics` service — verified pattern from dsh-api-remotes).
- * 2. Register the Usage Analytics dashboard into the `settings.section` slot
- *    (root-scoped full page; the closest seat to a standalone dashboard —
- *    harness-api.md §7.2).
+ * 2. Register the sidebar footer button (`sidebar.footer.action`) that opens
+ *    the full-screen usage dialog (`shell.overlay`) — the single entry point
+ *    for 用量分析.
  */
 import type {} from '@deepseek-ai/dsh-client-runtime/client';
-import type {} from '@deepseek-ai/dsh-client-ui-settings/client';
 import type {} from '@deepseek-ai/dsh-api-remotes/client';
 import type {} from '@deepseek-ai/dsh-typert-protocol/types';
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client';
+import type {} from '@deepseek-ai/dsh-client-ui-layout/client';
 import type { Context } from '@deepseek-ai/cordis';
 import type { TypertRemoteNamespaceMap } from '@deepseek-ai/dsh-typert-protocol';
-import { Dashboard } from './Dashboard.js';
+import { SidebarUsageButton } from './SidebarUsageButton.js';
+import { UsageOverlay } from './UsageOverlay.js';
 import { TYPERT_REMOTE } from './remote-contribution.js';
 import type {} from './remote-namespace.js';
 
@@ -51,19 +53,30 @@ export async function apply(ctx: Context): Promise<void> {
   // slot inject closure below would be an undeclared property read at render time.
   const usage = remote ? (ctx.get('remote.usageAnalytics') as TypertRemoteNamespaceMap['usageAnalytics'] | undefined) : undefined;
 
-  // 2. Dashboard page in settings (root scope — no session kit, data via remote).
+  // 2. Sidebar footer button (list slot; rendered above the settings gear).
   const slots = ctx.get('slots');
   if (!slots) return;
-  slots.inject('settings.section', () =>
+  slots.inject('sidebar.footer.action', () =>
     slots.register(
       {
-        name: 'settings.section',
-        id: 'usage-analytics',
-        order: 20,
-        label: () => '用量分析',
+        name: 'sidebar.footer.action',
+        id: 'usage-analytics-open',
+        order: 0,
+      },
+      SidebarUsageButton,
+    ),
+  );
+
+  // 3. Full-screen usage dialog (root-scope floating layer; renders null when closed).
+  slots.inject('shell.overlay', () =>
+    slots.register(
+      {
+        name: 'shell.overlay',
+        id: 'usage-analytics-overlay',
+        order: 100,
         inject: () => ({ usage }),
       },
-      Dashboard,
+      UsageOverlay,
     ),
   );
 }
