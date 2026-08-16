@@ -112,7 +112,7 @@ q.getSession(sessionId);               // session 详情 + 请求列表
 ```yaml
 - insert:
     - id: usage-analytics
-      name: 'dsh-usage-analytics'
+      name: '@xiaozhengyu/dsh-usage-analytics'
       config:
         # dbPath: '$DSH_HOME/usage-analytics/usage.sqlite'  # 默认
         # journalMode: 'wal'
@@ -151,6 +151,38 @@ cd $env:DSH_HOME\profiles\web
 pnpm add "file:E:\Programing\xzy-dsh-plugin\packages\dsh-usage-analytics"
 # 然后在 cordis.patch.yml 按上文 insert 行激活；client 侧改动需重启 harness 生效
 ```
+
+## 发布与安装（分发给其他用户）
+
+包名：`@xiaozhengyu/dsh-usage-analytics`（npm 公开包）。
+
+维护者发布：
+
+```bash
+pnpm --filter @xiaozhengyu/dsh-usage-analytics build
+pnpm --filter @xiaozhengyu/dsh-usage-analytics pack --dry-run   # 检查发布内容
+npm login
+npm publish                                                    # 或先 npm version patch/minor
+```
+
+用户安装：
+
+```bash
+# 环境：DeepSeek Harness（web profile）+ Node >= 22.5
+dsh plugin --profile web add @xiaozhengyu/dsh-usage-analytics
+```
+
+然后在 profile 的 `cordis.patch.yml` 添加启用行（`name` 必须是完整包名）：
+
+```yaml
+- insert:
+    - id: usage-analytics
+      name: '@xiaozhengyu/dsh-usage-analytics'
+      config:
+        # 可选：retention / 刷新间隔等
+```
+
+重启 `dsh web` 后，侧栏底部出现「用量」按钮。
 
 ## 文档索引
 

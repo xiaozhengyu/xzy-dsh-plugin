@@ -18,10 +18,10 @@ function strict(typeSymbol: string) {
 }
 
 export const TYPERT_REMOTE: TypertRemoteContribution = {
-  package: 'dsh-usage-analytics',
+  package: '@xiaozhengyu/dsh-usage-analytics',
   descriptors: [
     {
-      id: 'dsh-usage-analytics#usageAnalytics/getOverview',
+      id: '@xiaozhengyu/dsh-usage-analytics#usageAnalytics/getOverview',
       service: 'usageAnalytics',
       namespace: 'usageAnalytics',
       method: 'getOverview',
@@ -30,7 +30,7 @@ export const TYPERT_REMOTE: TypertRemoteContribution = {
       result: strict('dsh-usage-analytics/query#OverviewMetrics'),
     },
     {
-      id: 'dsh-usage-analytics#usageAnalytics/getTrend',
+      id: '@xiaozhengyu/dsh-usage-analytics#usageAnalytics/getTrend',
       service: 'usageAnalytics',
       namespace: 'usageAnalytics',
       method: 'getTrend',
@@ -42,7 +42,7 @@ export const TYPERT_REMOTE: TypertRemoteContribution = {
       result: strict('dsh-usage-analytics/query#TrendBucket[]'),
     },
     {
-      id: 'dsh-usage-analytics#usageAnalytics/getProviderStats',
+      id: '@xiaozhengyu/dsh-usage-analytics#usageAnalytics/getProviderStats',
       service: 'usageAnalytics',
       namespace: 'usageAnalytics',
       method: 'getProviderStats',
@@ -51,7 +51,7 @@ export const TYPERT_REMOTE: TypertRemoteContribution = {
       result: strict('dsh-usage-analytics/query#ProviderStats[]'),
     },
     {
-      id: 'dsh-usage-analytics#usageAnalytics/getModelStats',
+      id: '@xiaozhengyu/dsh-usage-analytics#usageAnalytics/getModelStats',
       service: 'usageAnalytics',
       namespace: 'usageAnalytics',
       method: 'getModelStats',
@@ -60,7 +60,7 @@ export const TYPERT_REMOTE: TypertRemoteContribution = {
       result: strict('dsh-usage-analytics/query#ModelStats[]'),
     },
     {
-      id: 'dsh-usage-analytics#usageAnalytics/listRequests',
+      id: '@xiaozhengyu/dsh-usage-analytics#usageAnalytics/listRequests',
       service: 'usageAnalytics',
       namespace: 'usageAnalytics',
       method: 'listRequests',
@@ -69,7 +69,7 @@ export const TYPERT_REMOTE: TypertRemoteContribution = {
       result: strict('dsh-usage-analytics/query#Paginated<UsageRecordRow>'),
     },
     {
-      id: 'dsh-usage-analytics#usageAnalytics/getRequest',
+      id: '@xiaozhengyu/dsh-usage-analytics#usageAnalytics/getRequest',
       service: 'usageAnalytics',
       namespace: 'usageAnalytics',
       method: 'getRequest',
@@ -78,7 +78,7 @@ export const TYPERT_REMOTE: TypertRemoteContribution = {
       result: strict('dsh-usage-analytics/storage#UsageRecordRow|null'),
     },
     {
-      id: 'dsh-usage-analytics#usageAnalytics/listSessions',
+      id: '@xiaozhengyu/dsh-usage-analytics#usageAnalytics/listSessions',
       service: 'usageAnalytics',
       namespace: 'usageAnalytics',
       method: 'listSessions',
@@ -87,7 +87,7 @@ export const TYPERT_REMOTE: TypertRemoteContribution = {
       result: strict('dsh-usage-analytics/query#SessionStats[]'),
     },
     {
-      id: 'dsh-usage-analytics#usageAnalytics/getSession',
+      id: '@xiaozhengyu/dsh-usage-analytics#usageAnalytics/getSession',
       service: 'usageAnalytics',
       namespace: 'usageAnalytics',
       method: 'getSession',

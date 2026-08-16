@@ -23,6 +23,8 @@ DeepSeek Harness 个人插件集。
 - UI 2.0：侧栏「用量」按钮 → `shell.overlay` 全屏弹窗；概览（KPI 分层、Token 用量、
   SVG 趋势、Provider/Model Bar、会话排行、最近请求）+ 请求历史 + 请求详情抽屉。
 
+npm 包名：`@xiaozhengyu/dsh-usage-analytics`（发布与安装见插件目录内 README）。
+
 文档：
 
 - 架构设计：`doc/DSH-Usage-Analytics-Architecture.md`
