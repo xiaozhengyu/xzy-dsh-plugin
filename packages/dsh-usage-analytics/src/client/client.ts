@@ -2,8 +2,10 @@
  * Packaged client half entry (bundled to lib/client.js by scripts/bundle-client.mjs).
  *
  * Responsibilities:
- * 1. Register the `usageAnalytics` Typert remote contribution so
- *    `ctx.remote.usageAnalytics.*` is callable (harness-api.md §7.3).
+ * 1. Mount the `usageAnalytics` Typert remote contribution via
+ *    `ctx.remote.$mount(TYPERT_REMOTE)` so `ctx.remote.usageAnalytics.*` is
+ *    callable (mount installs the concrete namespace methods + the
+ *    `remote.usageAnalytics` service — verified pattern from dsh-api-remotes).
  * 2. Register the Usage Analytics dashboard into the `settings.section` slot
  *    (root-scoped full page; the closest seat to a standalone dashboard —
  *    harness-api.md §7.2).
@@ -19,11 +21,16 @@ import type {} from './remote-namespace.js';
 
 export const name = 'usage-analytics-client';
 
-export function apply(ctx: Context): void {
-  // 1. Mount the remote contribution (fiber-owned: removed on unload).
-  const typert = ctx.get('typert');
-  if (typert) {
-    typert.remotes.register(TYPERT_REMOTE);
+export async function apply(ctx: Context): Promise<void> {
+  // 1. Mount the remote contribution (fiber-owned: disposed on unload).
+  const remote = ctx.get('remote');
+  if (remote) {
+    try {
+      await remote.$mount(TYPERT_REMOTE);
+    } catch (error) {
+      // fail-open: the dashboard renders an error state without the remote
+      console.error('usage-analytics: remote mount failed (fail-open)', error);
+    }
   }
 
   // 2. Dashboard page in settings (root scope — no session kit, data via remote).
@@ -36,7 +43,7 @@ export function apply(ctx: Context): void {
         id: 'usage-analytics',
         order: 20,
         label: () => 'Usage Analytics',
-        inject: () => ({ usage: ctx.remote.usageAnalytics }),
+        inject: () => ({ usage: ctx.remote?.usageAnalytics }),
       },
       Dashboard,
     ),

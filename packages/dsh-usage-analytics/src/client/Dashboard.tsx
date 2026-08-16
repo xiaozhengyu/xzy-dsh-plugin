@@ -17,11 +17,11 @@ import type {
 } from '../query/types.js';
 import type { UsageRecordRow } from '../storage/UsageRepository.js';
 
-/** The injected remote namespace prop. */
+/** The injected remote namespace prop (undefined when the mount failed). */
 type UsageRemote = TypertRemoteNamespaceMap['usageAnalytics'];
 
 export interface DashboardProps {
-  usage: UsageRemote;
+  usage: UsageRemote | undefined;
 }
 
 type PresetKey = 'today' | '7d' | '30d';
@@ -111,6 +111,11 @@ export function Dashboard(props: DashboardProps): React.ReactElement {
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
+    if (!usage) {
+      setError('usage-analytics remote unavailable');
+      setData(null);
+      return;
+    }
     const range = presetRange(preset);
     let cancelled = false;
     setError(null);
