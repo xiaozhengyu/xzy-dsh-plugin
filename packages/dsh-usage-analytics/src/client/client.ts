@@ -60,7 +60,7 @@ export async function apply(ctx: Context): Promise<void> {
         name: 'settings.section',
         id: 'usage-analytics',
         order: 20,
-        label: () => 'Usage Analytics',
+        label: () => '用量分析',
         inject: () => ({ usage }),
       },
       Dashboard,
