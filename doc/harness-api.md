@@ -394,7 +394,7 @@ dshHomePath(...segments: string[]): string;  // 拼接在解析后的 home 上
 
 - Frame 座位：`root`（禁止注册——会替换整个 AppFrame）、`sidebar`、`conversation`、`details`（均为 single，注册即替换已占用者——文档化的反模式）、`shell.overlay`（list/root 加法浮层）。
 - 最接近"页面"的座位：`conversation.view`（list/session 页签，trajectory 即此模式：`id: 'trajectory'`, `order: 10`）与 `settings.section`（list/root 模态内整页）。新 Slot 只能通过已占用条目的 `children:` 声明，不能独立声明。
-- → **Phase 4 Dashboard 的现实方案**：(a) `conversation.view` 注册会话内 Usage 页签（可复用 session 标准 kit：`useSession`/`useProjection`/`sessionId`）；(b) `settings.section` 注册 root 作用域统计页（只拿到全局 kit，数据需经 Typert RPC 拉取）；(c) `shell.overlay` 浮层。**已落地组合：`sidebar.footer.action` 按钮 + `shell.overlay` 全屏弹窗（见 §7.2.1）**。
+- → **Phase 4 Dashboard 的现实方案**：(a) `conversation.view` 注册会话内 Usage 页签（可复用 session 标准 kit：`useSession`/`useProjection`/`sessionId`）；(b) `settings.section` 注册 root 作用域统计页（只拿到全局 kit，数据需经 Typert RPC 拉取）；(c) `shell.overlay` 浮层。**取舍已定并落地：`sidebar.footer.action` 按钮 + `shell.overlay` 全屏弹窗（见 §7.2.1）**。
 
 标准注册模式（目标 slot 由其他包声明时必须与 `slots.inject` 配对，保证声明期顺序安全）：
 

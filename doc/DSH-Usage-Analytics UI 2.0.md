@@ -545,9 +545,9 @@ client/
 │   ├── EmptyState.tsx
 │   └── Skeleton.tsx
 │
-├── Dashboard.tsx
 ├── OverviewPanel.tsx
 ├── RequestHistory.tsx
+├── RequestDetailDrawer.tsx
 └── UsageOverlay.tsx
 ```
 

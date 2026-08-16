@@ -1,15 +1,33 @@
+# xzy-dsh-plugins
+
+DeepSeek Harness 个人插件集。
+
 ## 插件清单
 
 | 插件 | 说明 | 状态 |
 |---|---|---|
-| [dsh-usage-analytics](packages/dsh-usage-analytics) | DeepSeek Harness 的 LLM Usage Analytics / Observability 插件 | Phase 4（Native UI 完成，web 已接入） |
+| [dsh-usage-analytics](packages/dsh-usage-analytics) | DeepSeek Harness 的 LLM Usage Analytics / Observability 插件 | 已完成（采集 / 台账 / 查询 / UI 2.0 / 保留策略） |
 
 ## 插件介绍
 
 ### dsh-usage-analytics
 
 基于 Harness `session/event` 流采集、归一化每一次 LLM 调用的 usage / cache / latency / status，
-最终建立面向历史分析的 Usage Ledger（SQLite）。
+建立面向历史分析的 Usage Ledger（SQLite），并通过侧栏入口提供全屏用量分析界面。
 
-设计文档：`doc/DSH-Usage-Analytics-Architecture.md`
-API Lock（基于 DSH v0.1.0-rc.6 实际源码）：`doc/harness-api.md`
+核心能力：
+
+- 采集：`session/event` 全局火线 → 归一化 → 幂等入账（provisional → final 替换，fail-open）。
+- 存储：SQLite（STRICT + WAL + 参数化 SQL），异步批量写入；请求明细 60 天 / 日聚合 360 天 / raw 7 天。
+- 查询：Overview / Trend / Provider / Model / Session / Request History（筛选、搜索、排序、分页）。
+- UI 2.0：侧栏「用量」按钮 → `shell.overlay` 全屏弹窗；概览（KPI 分层、Token 用量、
+  SVG 趋势、Provider/Model Bar、会话排行、最近请求）+ 请求历史 + 请求详情抽屉。
+
+文档：
+
+- 架构设计：`doc/DSH-Usage-Analytics-Architecture.md`
+- API Lock（基于 DSH v0.1.0-rc.6 实际源码）：`doc/harness-api.md`
+- 数据保留策略与存储架构：`doc/DSH-Usage-Analytics-数据保留策略与存储架构建议.md`
+- UI 2.0 方案：`doc/DSH-Usage-Analytics UI 2.0.md`
+
+安装与配置见插件目录内 README。

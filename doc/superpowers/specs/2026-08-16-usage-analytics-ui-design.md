@@ -4,6 +4,9 @@
 > 状态：已获用户批准（对话确认 A 方案：Tab 分页）
 > 适用范围：`dsh-usage-analytics` client half（`settings.section` 座位）
 
+> 注：入口最终调整为侧栏按钮 + `shell.overlay` 全屏弹窗（`settings.section` 移除），
+> 实现细节见 `doc/harness-api.md §7.2.1`；其余设计（Tab 结构、中文化、筛选/排序/分页）不变。
+
 ## 1. 背景与目标
 
 当前用量分析页面只有英文内容、菜单名为 `Usage Analytics`，且请求历史只有“最近 10 条”，
@@ -111,7 +114,7 @@
 - `src/client/SidebarUsageButton.tsx`：侧栏按钮，点击写入 overlay 开关。
 - `src/client/UsageOverlay.tsx` + `overlay-store.ts`：全屏弹窗与开关状态（模块级单例 +
   `useSyncExternalStore`）。
-- `src/client/Dashboard.tsx`：改为 Tab 壳，拆分出 `OverviewPanel.tsx`（现有内容迁移）与
+- `src/client/Dashboard.tsx`：改为 Tab 壳（后并入 `UsageOverlay.tsx`），拆分出 `OverviewPanel.tsx`（现有内容迁移）与
   `RequestHistory.tsx`（新增）；共享格式化函数抽到 `shared.ts`；弹窗模式下接收 `onClose`。
 - 样式沿用 Harness 主题变量（`--theme-*`），不引入第三方库。
 - 客户端 bundle 由 `scripts/bundle-client.mjs` 重新构建。

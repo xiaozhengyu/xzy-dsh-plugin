@@ -2,8 +2,8 @@
 
 > 基于 DeepSeek Harness 当前 `master` 分支插件机制设计。
 >
-> 文档版本：v1.0  
-> 状态：Architecture Design / Ready for Implementation  
+> 文档版本：v1.1  
+> 状态：设计已落地（Phase 0–4 完成；Phase 5 Hardening 待做）  
 > 项目定位：DeepSeek Harness 的 LLM Usage Analytics / Observability 插件
 
 ---
@@ -809,50 +809,54 @@ Projection 只负责当前 Session 的快速展示，不作为长期历史数据
 
 # 15. UI 设计
 
-## 15.1 Dashboard
+## 15.1 Dashboard（已落地：侧栏按钮 + 全屏弹窗）
 
-页面：
+入口：侧栏底部 `sidebar.footer.action` 的「用量」按钮 → `shell.overlay` 全屏弹窗；
+弹窗内为「概览 / 请求历史」两个 Tab（实现细节见 harness-api.md §7.2.1）。
 
-`Usage Analytics`
-
-区域：
+概览区域：
 
 ```text
-Overview Cards
+Overview Cards（KPI 分层）
         ↓
-Token Trend
+Token Usage / Performance
         ↓
-Provider / Model Distribution
+Token Trend（SVG，Tokens / Requests 切换）
+        ↓
+Provider / Model Distribution（横向 Bar）
         ↓
 Recent Requests
 ```
 
 ---
 
-## 15.2 Overview Cards
+## 15.2 Overview Cards（已落地）
 
-第一行：
-
-```text
-Total Tokens
-Input
-Cache Read
-Output
-```
-
-第二行：
+第一行（核心 KPI）：
 
 ```text
 Requests
+Total Tokens
 Success Rate
-Avg Duration
+Cache Hit Rate
+```
+
+第二行（Token 用量 / 性能分区）：
+
+```text
+Token Usage：Input / Cache / Output / Total（比例条）
+Performance：Avg / P95 / Tokens per Request
 ```
 
 ---
 
-## 15.3 Request Table
+## 15.3 Request List（已落地：行式列表 + 详情抽屉）
 
-推荐列：
+请求历史采用两行紧凑行（身份 + 总量 / 耗时 / 状态徽标 + 输入·缓存·输出说明行），
+排序（时间 / 耗时 / 总量）、分页、筛选与搜索；点击行打开请求详情抽屉
+（Token 明细含缓存读/写拆分、TTFT、状态、完成原因、用量来源、会话上下文、错误）。
+
+早期表格推荐的完整列（保留为信息参考）：
 
 ```text
 Time
@@ -873,29 +877,16 @@ Status
 
 ---
 
-## 15.4 Session Detail
+## 15.4 Session Detail（未来）
 
-使用：
-
-```text
-Summary
-Token Breakdown
-Timeline
-Request List
-```
+概览已提供会话排行；按会话下钻（Summary / Token Breakdown / Request List）为后续功能。
 
 ---
 
-## 15.5 Settings
+## 15.5 配置（已落地：profile 配置）
 
-设置：
-
-```text
-Data Retention
-Raw Event Retention
-Default Date Range
-Refresh Interval
-```
+不设设置页；retention 天数、清理周期、聚合重算周期等通过 profile `cordis.patch.yml`
+的插件 config 配置（见插件 README「配置」）。
 
 ---
 
@@ -1238,14 +1229,15 @@ dsh-usage-analytics/
 │   │   └── UsageProjection.ts
 │   │
 │   └── client/
-│       ├── Dashboard.tsx
-│       ├── UsageTable.tsx
-│       ├── UsageChart.tsx
-│       ├── ProviderStats.tsx
-│       ├── ModelStats.tsx
-│       ├── SessionDetail.tsx
-│       ├── RequestDetail.tsx
-│       └── Settings.tsx
+│       ├── client.ts                （入口：注册侧栏按钮 + shell.overlay）
+│       ├── SidebarUsageButton.tsx
+│       ├── UsageOverlay.tsx         （全屏弹窗 + Tab）
+│       ├── OverviewPanel.tsx
+│       ├── RequestHistory.tsx
+│       ├── RequestDetailDrawer.tsx
+│       ├── overlay-store.ts
+│       ├── shared.ts / client-types.ts / remote-*.ts
+│       └── ui/                      （tokens + Card/StatCard/Badge/Section/EmptyState/Skeleton）
 │
 ├── migrations/
 │   ├── 001_initial.sql
@@ -1265,7 +1257,7 @@ dsh-usage-analytics/
 
 # 26. 推荐实现阶段
 
-## Phase 0 — API Lock
+## Phase 0 — API Lock（已完成）
 
 目标：
 
@@ -1290,7 +1282,7 @@ dsh-usage-analytics/
 
 ---
 
-## Phase 1 — Collector
+## Phase 1 — Collector（已完成）
 
 实现：
 
@@ -1311,7 +1303,7 @@ EventNormalizer
 
 ---
 
-## Phase 2 — Usage Ledger
+## Phase 2 — Usage Ledger（已完成）
 
 实现：
 
@@ -1323,7 +1315,7 @@ EventNormalizer
 
 ---
 
-## Phase 3 — Query Service
+## Phase 3 — Query Service（已完成）
 
 实现：
 
@@ -1336,21 +1328,24 @@ EventNormalizer
 
 ---
 
-## Phase 4 — Native UI
+## Phase 4 — Native UI（已完成）
 
-实现：
+已交付：
 
 ```text
 Dashboard
 Request History
-Session Detail
 Request Detail
-Settings
 ```
+
+未交付 / 未来：
+
+- Session Detail 下钻（概览仅提供会话排行）。
+- 设置页（已改为通过 profile 配置项管理保留策略与刷新间隔）。
 
 ---
 
-## Phase 5 — Hardening
+## Phase 5 — Hardening（待做）
 
 实现：
 
