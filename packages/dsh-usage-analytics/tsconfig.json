@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM"],
+    "jsx": "react-jsx",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "strict": true,
@@ -25,6 +26,27 @@
       ],
       "@deepseek-ai/dsh-home-paths": [
         "C:/Users/xiao/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-home-paths/lib/types/index.d.ts"
+      ],
+      "@deepseek-ai/dsh-typert-protocol": [
+        "C:/Users/xiao/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-typert-protocol/lib/types/index.d.ts"
+      ],
+      "@deepseek-ai/dsh-typert-protocol/types": [
+        "C:/Users/xiao/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-typert-protocol/lib/types/types.d.ts"
+      ],
+      "@deepseek-ai/dsh-client-runtime/client": [
+        "C:/Users/xiao/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-runtime/lib/types/client/index.d.ts"
+      ],
+      "@deepseek-ai/dsh-client-runtime": [
+        "C:/Users/xiao/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-runtime/lib/types/index.d.ts"
+      ],
+      "@deepseek-ai/dsh-api-remotes/client": [
+        "C:/Users/xiao/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-api-remotes/lib/types/client/index.d.ts"
+      ],
+      "@deepseek-ai/dsh-client-ui-slots": [
+        "C:/Users/xiao/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-slots/lib/types/index.d.ts"
+      ],
+      "@deepseek-ai/dsh-client-ui-settings/client": [
+        "C:/Users/xiao/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-settings/lib/types/client/index.d.ts"
       ]
     }
   },

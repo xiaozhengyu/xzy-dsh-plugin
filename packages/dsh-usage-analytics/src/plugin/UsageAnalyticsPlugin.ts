@@ -2,6 +2,7 @@ import type { Context } from '@deepseek-ai/cordis';
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths';
 import type { Session } from '@deepseek-ai/dsh-session';
 import { UsageCollector } from '../collector/UsageCollector.js';
+import { UsageRemoteService } from '../remote/UsageRemoteService.js';
 import type { RetentionConfig } from '../service/RetentionService.js';
 import type { JournalMode } from '../storage/Database.js';
 import { UsageLedger } from '../storage/UsageLedger.js';
@@ -49,6 +50,16 @@ export function apply(ctx: Context, config: UsageAnalyticsPluginConfig = {}): vo
     });
   } catch (error) {
     logger.error('usage-analytics ledger unavailable; analytics degraded (fail-open)', error);
+  }
+
+  // Expose the query facade over Typert (packaged client half calls
+  // ctx.remote.usageAnalytics.*). No ledger → no remote surface.
+  if (ledger) {
+    try {
+      new UsageRemoteService(ctx, ledger.query());
+    } catch (error) {
+      logger.error('usage-analytics remote service unavailable (fail-open)', error);
+    }
   }
 
   const collector = new UsageCollector({

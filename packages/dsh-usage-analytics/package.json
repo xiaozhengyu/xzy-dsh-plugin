@@ -10,7 +10,16 @@
       "types": "./lib/index.d.ts",
       "default": "./lib/index.js"
     },
+    "./client": {
+      "types": "./lib/client/client.d.ts",
+      "default": "./lib/client.js"
+    },
     "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web"
+    }
   },
   "files": [
     "lib"
@@ -26,7 +35,9 @@
     "observability"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && node scripts/bundle-client.mjs",
+    "build:host": "tsc -p tsconfig.build.json",
+    "build:client": "node scripts/bundle-client.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -42,6 +53,11 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "esbuild": "^0.25.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
   }
