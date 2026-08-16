@@ -50,10 +50,6 @@ export function fmtPct(rate: number | null | undefined): string {
   return `${(rate * 100).toFixed(1)}%`;
 }
 
-export function fmtDate(ms: number): string {
-  return new Date(ms).toISOString().slice(5, 16).replace('T', ' ');
-}
-
 function pad2(n: number): string {
   return String(n).padStart(2, '0');
 }
@@ -76,33 +72,6 @@ export function toLocalDateInput(ms: number): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
-export const cardStyle: CSSProperties = {
-  background: 'var(--theme-surface, rgba(127,127,127,0.08))',
-  borderRadius: 8,
-  padding: '12px 16px',
-  minWidth: 130,
-};
-export const labelStyle: CSSProperties = { fontSize: 12, opacity: 0.65, marginBottom: 4 };
-export const valueStyle: CSSProperties = { fontSize: 20, fontWeight: 600, fontVariantNumeric: 'tabular-nums' };
-export const sectionTitleStyle: CSSProperties = { fontSize: 14, fontWeight: 600, margin: '20px 0 8px' };
-export const tableStyle: CSSProperties = {
-  width: '100%',
-  borderCollapse: 'collapse',
-  fontSize: 13,
-};
-export const tableWrapStyle: CSSProperties = {
-  overflowX: 'auto',
-};
-export const thStyle: CSSProperties = {
-  textAlign: 'left',
-  padding: '6px 8px',
-  opacity: 0.6,
-  borderBottom: '1px solid var(--theme-border, rgba(127,127,127,0.25))',
-};
-export const tdStyle: CSSProperties = {
-  padding: '6px 8px',
-  borderBottom: '1px solid var(--theme-border, rgba(127,127,127,0.15))',
-};
 export const btnStyle = (active: boolean): CSSProperties => ({
   padding: '4px 10px',
   marginRight: 6,

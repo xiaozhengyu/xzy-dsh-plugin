@@ -1,29 +1,28 @@
 /**
- * 用量分析 —— 请求历史 Tab。
- * 时间预设 + Provider / Model / 状态筛选 + 关键词搜索 + 列排序 + 分页。
+ * 用量分析 —— 请求历史 Tab（UI 2.0）。
+ * 筛选 + 排序 + 分页 + 紧凑行列表，点击行打开请求详情抽屉。
  */
 import React from 'react';
 import type { RequestStatus } from '../model/types.js';
 import type { Paginated, RequestQuery } from '../query/types.js';
 import type { UsageRecordRow } from '../storage/UsageRepository.js';
 import type { UsageRemote } from './client-types.js';
+import { RequestDetailDrawer } from './RequestDetailDrawer.js';
 import {
   btnStyle,
   filterInputStyle,
   filterSelectStyle,
   fmt,
-  fmtDate,
   fmtMs,
+  fmtTime,
   PRESET_KEYS,
   presetLabel,
   presetRange,
-  tableStyle,
-  tableWrapStyle,
-  tdStyle,
-  thStyle,
   unwrap,
   type PresetKey,
 } from './shared.js';
+import { Card, EmptyState, ListSkeleton, statusBadge } from './ui/index.js';
+import { font, palette, radius, spacing } from './ui/tokens.js';
 
 const PAGE_SIZE = 20;
 
@@ -37,7 +36,7 @@ const STATUS_OPTIONS: Array<{ value: RequestStatus; label: string }> = [
 
 type SortField = 'time' | 'duration' | 'totalTokens';
 
-const SORTABLE_COLUMNS: Array<{ field: SortField; label: string }> = [
+const SORT_FIELDS: Array<{ field: SortField; label: string }> = [
   { field: 'time', label: '时间' },
   { field: 'duration', label: '耗时' },
   { field: 'totalTokens', label: '总量' },
@@ -63,8 +62,9 @@ export function RequestHistory(props: RequestHistoryProps): React.ReactElement {
   const [providerOptions, setProviderOptions] = React.useState<string[]>([]);
   const [modelOptions, setModelOptions] = React.useState<string[]>([]);
   const [error, setError] = React.useState<string | null>(null);
+  const [detailRow, setDetailRow] = React.useState<UsageRecordRow | null>(null);
+  const [hoveredId, setHoveredId] = React.useState<number | null>(null);
 
-  // 搜索框防抖：停止输入 300ms 后生效。
   React.useEffect(() => {
     const timer = setTimeout(() => setSearch(searchInput), 300);
     return () => clearTimeout(timer);
@@ -79,7 +79,6 @@ export function RequestHistory(props: RequestHistoryProps): React.ReactElement {
     const range = presetRange(preset);
     let cancelled = false;
     setError(null);
-    setData(null);
     void (async () => {
       try {
         const query: RequestQuery = {
@@ -114,16 +113,9 @@ export function RequestHistory(props: RequestHistoryProps): React.ReactElement {
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1;
 
-  const onPreset = (key: PresetKey): void => {
-    setPreset(key);
-    setProvider('all');
-    setModel('all');
-    setPage(0);
-  };
   const onSort = (field: SortField): void => {
-    if (field === sortBy) {
-      setOrder(order === 'asc' ? 'desc' : 'asc');
-    } else {
+    if (field === sortBy) setOrder(order === 'asc' ? 'desc' : 'asc');
+    else {
       setSortBy(field);
       setOrder('desc');
     }
@@ -143,11 +135,11 @@ export function RequestHistory(props: RequestHistoryProps): React.ReactElement {
     null,
     React.createElement(
       'div',
-      { style: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 12 } },
+      { style: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.lg } },
       PRESET_KEYS.map((key) =>
         React.createElement(
           'button',
-          { key: key, style: btnStyle(preset === key), onClick: () => onPreset(key) },
+          { key: key, style: btnStyle(preset === key), onClick: () => { setPreset(key); setPage(0); }, type: 'button' },
           presetLabel(key),
         ),
       ),
@@ -156,10 +148,7 @@ export function RequestHistory(props: RequestHistoryProps): React.ReactElement {
         {
           style: filterSelectStyle,
           value: provider,
-          onChange: (e: React.ChangeEvent<HTMLSelectElement>) => {
-            setProvider(e.target.value);
-            setPage(0);
-          },
+          onChange: (e: React.ChangeEvent<HTMLSelectElement>) => { setProvider(e.target.value); setPage(0); },
         },
         React.createElement('option', { value: 'all' }, '全部 Provider'),
         providerOptions.map((p) => React.createElement('option', { key: p, value: p }, p)),
@@ -169,10 +158,7 @@ export function RequestHistory(props: RequestHistoryProps): React.ReactElement {
         {
           style: filterSelectStyle,
           value: model,
-          onChange: (e: React.ChangeEvent<HTMLSelectElement>) => {
-            setModel(e.target.value);
-            setPage(0);
-          },
+          onChange: (e: React.ChangeEvent<HTMLSelectElement>) => { setModel(e.target.value); setPage(0); },
         },
         React.createElement('option', { value: 'all' }, '全部 Model'),
         modelOptions.map((m) => React.createElement('option', { key: m, value: m }, m)),
@@ -182,10 +168,7 @@ export function RequestHistory(props: RequestHistoryProps): React.ReactElement {
         {
           style: filterSelectStyle,
           value: status,
-          onChange: (e: React.ChangeEvent<HTMLSelectElement>) => {
-            setStatus(e.target.value as RequestStatus | 'all');
-            setPage(0);
-          },
+          onChange: (e: React.ChangeEvent<HTMLSelectElement>) => { setStatus(e.target.value as RequestStatus | 'all'); setPage(0); },
         },
         React.createElement('option', { value: 'all' }, '全部状态'),
         STATUS_OPTIONS.map((s) => React.createElement('option', { key: s.value, value: s.value }, s.label)),
@@ -198,99 +181,105 @@ export function RequestHistory(props: RequestHistoryProps): React.ReactElement {
       }),
       React.createElement(
         'button',
-        { style: btnStyle(false), onClick: resetFilters },
+        { style: btnStyle(false), onClick: resetFilters, type: 'button' },
         '重置筛选',
       ),
     ),
-    error !== null
+    error !== null && data === null
       ? React.createElement(
           'div',
-          { style: { color: 'var(--theme-danger, #e5534b)' } },
+          { style: { color: palette.danger } },
           React.createElement('span', null, `加载失败：${error}`),
           React.createElement(
             'button',
-            { style: { ...btnStyle(false), marginLeft: 8 }, onClick: () => setReload((r) => r + 1) },
+            { style: { ...btnStyle(false), marginLeft: spacing.sm }, onClick: () => setReload((r) => r + 1), type: 'button' },
             '重试',
           ),
         )
       : data === null
-        ? React.createElement('div', { style: { opacity: 0.6 } }, '加载中…')
+        ? React.createElement(ListSkeleton, { rows: 8 })
         : data.total === 0
-          ? React.createElement('div', { style: { opacity: 0.7, padding: '20px 0' } }, '该范围内没有请求记录，换个时间范围或清除筛选条件试试。')
+          ? React.createElement(
+              Card,
+              null,
+              React.createElement(EmptyState, { title: '该范围内没有请求记录', description: '换个时间范围或清除筛选条件试试。' }),
+            )
           : React.createElement(
-              React.Fragment,
+              'div',
               null,
               React.createElement(
                 'div',
-                { style: tableWrapStyle },
-                React.createElement(
-                  'table',
-                  { style: tableStyle },
+                { style: { display: 'flex', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.sm } },
+                React.createElement('span', { style: { fontSize: font.label, color: palette.labelTertiary, marginRight: spacing.sm } }, '排序'),
+                SORT_FIELDS.map((f) =>
                   React.createElement(
-                    'thead',
-                    null,
-                    React.createElement(
-                      'tr',
-                      null,
-                      SORTABLE_COLUMNS.map((c) =>
-                        React.createElement(
-                          'th',
-                          { key: c.field, style: { ...thStyle, cursor: 'pointer', userSelect: 'none' }, onClick: () => onSort(c.field) },
-                          `${c.label}${sortBy === c.field ? (order === 'asc' ? ' ↑' : ' ↓') : ''}`,
-                        ),
-                      ),
-                      ['Provider', 'Model', '输入', '缓存', '输出', '状态'].map((h) =>
-                        React.createElement('th', { key: h, style: thStyle }, h),
-                      ),
-                    ),
+                    'button',
+                    {
+                      key: f.field,
+                      style: btnStyle(sortBy === f.field),
+                      onClick: () => onSort(f.field),
+                      type: 'button',
+                    },
+                    `${f.label}${sortBy === f.field ? (order === 'asc' ? ' ↑' : ' ↓') : ''}`,
                   ),
+                ),
+              ),
+              React.createElement(
+                'div',
+                { style: { border: `1px solid ${palette.borderSubtle}`, borderRadius: radius.md, overflow: 'hidden' } },
+                data.items.map((row) =>
                   React.createElement(
-                    'tbody',
-                    null,
-                    data.items.map((r) =>
+                    'div',
+                    {
+                      key: row.id,
+                      onClick: () => setDetailRow(row),
+                      onMouseEnter: () => setHoveredId(row.id),
+                      onMouseLeave: () => setHoveredId(null),
+                      style: {
+                        cursor: 'pointer',
+                        padding: `${spacing.sm}px ${spacing.md}px`,
+                        borderBottom: `1px solid ${palette.borderSubtle}`,
+                        background: hoveredId === row.id ? 'var(--dsw-alias-interactive-bg-hover, rgba(127,127,127,0.08))' : 'transparent',
+                      },
+                    },
+                    React.createElement(
+                      'div',
+                      { style: { display: 'flex', alignItems: 'center', gap: spacing.md, fontSize: font.body } },
+                      React.createElement('span', { style: { width: 104, flex: 'none', fontSize: font.caption, color: palette.labelTertiary, fontVariantNumeric: 'tabular-nums' } }, fmtTime(row.startedAt)),
                       React.createElement(
-                        'tr',
-                        { key: r.id },
-                        React.createElement('td', { style: tdStyle }, fmtDate(r.startedAt)),
-                        React.createElement('td', { style: tdStyle }, fmtMs(r.durationMs)),
-                        React.createElement('td', { style: tdStyle }, fmt(r.totalTokens)),
-                        React.createElement('td', { style: tdStyle }, r.provider ?? '—'),
-                        React.createElement('td', { style: tdStyle }, r.model ?? '—'),
-                        React.createElement('td', { style: tdStyle }, fmt(r.inputTokens)),
-                        React.createElement('td', { style: tdStyle }, fmt((r.cacheReadTokens ?? 0) + (r.cacheWriteTokens ?? 0))),
-                        React.createElement('td', { style: tdStyle }, fmt(r.outputTokens)),
-                        React.createElement('td', { style: tdStyle }, statusLabel(r.status)),
+                        'div',
+                        { style: { flex: 1, minWidth: 0 } },
+                        React.createElement('div', { style: { color: palette.labelPrimary, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.model ?? '—'),
+                        React.createElement('div', { style: { fontSize: font.caption, color: palette.labelTertiary } }, row.provider ?? '—'),
                       ),
+                      React.createElement('span', { style: { width: 100, flex: 'none', textAlign: 'right', color: palette.labelPrimary, fontWeight: 600, fontVariantNumeric: 'tabular-nums' } }, fmt(row.totalTokens)),
+                      React.createElement('span', { style: { width: 64, flex: 'none', textAlign: 'right', color: palette.labelSecondary, fontVariantNumeric: 'tabular-nums' } }, fmtMs(row.durationMs)),
+                      React.createElement('div', { style: { width: 88, flex: 'none', textAlign: 'right' } }, statusBadge(row.status)),
+                    ),
+                    React.createElement(
+                      'div',
+                      { style: { marginTop: 2, paddingLeft: 118, fontSize: font.caption, color: palette.labelTertiary, fontVariantNumeric: 'tabular-nums' } },
+                      `输入 ${fmt(row.inputTokens)} · 缓存 ${fmt((row.cacheReadTokens ?? 0) + (row.cacheWriteTokens ?? 0))} · 输出 ${fmt(row.outputTokens)}`,
                     ),
                   ),
                 ),
               ),
               React.createElement(
                 'div',
-                { style: { display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, fontSize: 12 } },
+                { style: { display: 'flex', alignItems: 'center', gap: spacing.md, marginTop: spacing.md, fontSize: font.label, color: palette.labelSecondary } },
                 React.createElement('span', null, `共 ${data.total} 条 · 第 ${Math.min(page + 1, totalPages)} / ${totalPages} 页`),
                 React.createElement(
                   'button',
-                  { style: btnStyle(false), disabled: page === 0, onClick: () => setPage((p) => Math.max(0, p - 1)) },
+                  { style: btnStyle(false), disabled: page === 0, onClick: () => setPage((p) => Math.max(0, p - 1)), type: 'button' },
                   '上一页',
                 ),
                 React.createElement(
                   'button',
-                  { style: btnStyle(false), disabled: page + 1 >= totalPages, onClick: () => setPage((p) => p + 1) },
+                  { style: btnStyle(false), disabled: page + 1 >= totalPages, onClick: () => setPage((p) => p + 1), type: 'button' },
                   '下一页',
                 ),
               ),
             ),
+    React.createElement(RequestDetailDrawer, { row: detailRow, onClose: () => setDetailRow(null) }),
   );
-}
-
-function statusLabel(status: string): string {
-  const labels: Record<string, string> = {
-    SUCCESS: '成功',
-    ERROR: '错误',
-    ABORTED: '中断',
-    MAX_TOKENS: '达到上限',
-    UNKNOWN: '未知',
-  };
-  return labels[status] ?? status;
 }
