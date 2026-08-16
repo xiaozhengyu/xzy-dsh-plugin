@@ -90,6 +90,8 @@ export const filterSelectStyle: CSSProperties = {
   background: 'var(--theme-surface, rgba(127,127,127,0.08))',
   color: 'inherit',
   fontSize: 12,
+  // 原生下拉弹出层默认白底；深色主题下显式声明 dark 使选项列表跟随深色。
+  colorScheme: 'dark',
 };
 
 export const filterInputStyle: CSSProperties = {

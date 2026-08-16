@@ -42,6 +42,11 @@ const SORT_FIELDS: Array<{ field: SortField; label: string }> = [
   { field: 'totalTokens', label: '总量' },
 ];
 
+const optionStyle: React.CSSProperties = {
+  background: 'var(--dsw-alias-bg-layer-2, #1e1f24)',
+  color: 'var(--dsw-alias-label-primary, #e8e8e8)',
+};
+
 interface RequestHistoryProps {
   usage: UsageRemote | undefined;
 }
@@ -150,8 +155,8 @@ export function RequestHistory(props: RequestHistoryProps): React.ReactElement {
           value: provider,
           onChange: (e: React.ChangeEvent<HTMLSelectElement>) => { setProvider(e.target.value); setPage(0); },
         },
-        React.createElement('option', { value: 'all' }, '全部 Provider'),
-        providerOptions.map((p) => React.createElement('option', { key: p, value: p }, p)),
+        React.createElement('option', { value: 'all', style: optionStyle }, '全部 Provider'),
+        providerOptions.map((p) => React.createElement('option', { key: p, value: p, style: optionStyle }, p)),
       ),
       React.createElement(
         'select',
@@ -160,8 +165,8 @@ export function RequestHistory(props: RequestHistoryProps): React.ReactElement {
           value: model,
           onChange: (e: React.ChangeEvent<HTMLSelectElement>) => { setModel(e.target.value); setPage(0); },
         },
-        React.createElement('option', { value: 'all' }, '全部 Model'),
-        modelOptions.map((m) => React.createElement('option', { key: m, value: m }, m)),
+        React.createElement('option', { value: 'all', style: optionStyle }, '全部 Model'),
+        modelOptions.map((m) => React.createElement('option', { key: m, value: m, style: optionStyle }, m)),
       ),
       React.createElement(
         'select',
@@ -170,8 +175,8 @@ export function RequestHistory(props: RequestHistoryProps): React.ReactElement {
           value: status,
           onChange: (e: React.ChangeEvent<HTMLSelectElement>) => { setStatus(e.target.value as RequestStatus | 'all'); setPage(0); },
         },
-        React.createElement('option', { value: 'all' }, '全部状态'),
-        STATUS_OPTIONS.map((s) => React.createElement('option', { key: s.value, value: s.value }, s.label)),
+        React.createElement('option', { value: 'all', style: optionStyle }, '全部状态'),
+        STATUS_OPTIONS.map((s) => React.createElement('option', { key: s.value, value: s.value, style: optionStyle }, s.label)),
       ),
       React.createElement('input', {
         style: filterInputStyle,
