@@ -452,18 +452,27 @@ function recentRow(row: UsageRecordRow): React.ReactElement {
     'div',
     {
       key: row.id,
-      style: { display: 'flex', alignItems: 'center', gap: spacing.md, padding: `${spacing.sm}px ${spacing.xs}px`, borderBottom: `1px solid ${palette.borderSubtle}`, fontSize: font.body },
+      style: { padding: `${spacing.sm}px ${spacing.xs}px`, borderBottom: `1px solid ${palette.borderSubtle}` },
     },
-    React.createElement('span', { style: { width: 110, flex: 'none', fontSize: font.caption, color: palette.labelTertiary, fontVariantNumeric: 'tabular-nums' } }, fmtTime(row.startedAt)),
     React.createElement(
       'div',
-      { style: { flex: 1, minWidth: 0 } },
-      React.createElement('div', { style: { color: palette.labelPrimary, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.model ?? '—'),
-      React.createElement('div', { style: { fontSize: font.caption, color: palette.labelTertiary } }, row.provider ?? '—'),
+      { style: { display: 'flex', alignItems: 'center', gap: spacing.md, fontSize: font.body } },
+      React.createElement('span', { style: { width: 110, flex: 'none', fontSize: font.caption, color: palette.labelTertiary, fontVariantNumeric: 'tabular-nums' } }, fmtTime(row.startedAt)),
+      React.createElement(
+        'div',
+        { style: { flex: 1, minWidth: 0 } },
+        React.createElement('div', { style: { color: palette.labelPrimary, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.model ?? '—'),
+        React.createElement('div', { style: { fontSize: font.caption, color: palette.labelTertiary } }, row.provider ?? '—'),
+      ),
+      React.createElement('span', { style: { width: 110, flex: 'none', textAlign: 'right', color: palette.labelPrimary, fontVariantNumeric: 'tabular-nums' } }, fmt(row.totalTokens)),
+      React.createElement('span', { style: { width: 70, flex: 'none', textAlign: 'right', color: palette.labelSecondary, fontVariantNumeric: 'tabular-nums' } }, fmtMs(row.durationMs)),
+      React.createElement('div', { style: { width: 90, flex: 'none', textAlign: 'right' } }, statusBadge(row.status)),
     ),
-    React.createElement('span', { style: { width: 110, flex: 'none', textAlign: 'right', color: palette.labelPrimary, fontVariantNumeric: 'tabular-nums' } }, fmt(row.totalTokens)),
-    React.createElement('span', { style: { width: 70, flex: 'none', textAlign: 'right', color: palette.labelSecondary, fontVariantNumeric: 'tabular-nums' } }, fmtMs(row.durationMs)),
-    React.createElement('div', { style: { width: 90, flex: 'none', textAlign: 'right' } }, statusBadge(row.status)),
+    React.createElement(
+      'div',
+      { style: { marginTop: 2, paddingLeft: 118, fontSize: font.caption, color: palette.labelTertiary, fontVariantNumeric: 'tabular-nums' } },
+      `输入 ${fmt(row.inputTokens)} · 缓存 ${fmt((row.cacheReadTokens ?? 0) + (row.cacheWriteTokens ?? 0))} · 输出 ${fmt(row.outputTokens)}`,
+    ),
   );
 }
 
