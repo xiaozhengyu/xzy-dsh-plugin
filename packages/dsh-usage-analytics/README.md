@@ -162,7 +162,7 @@ pnpm add "file:E:\Programing\xzy-dsh-plugin\packages\dsh-usage-analytics"
 pnpm --filter @xiaozhengyu/dsh-usage-analytics build
 pnpm --filter @xiaozhengyu/dsh-usage-analytics pack --dry-run   # 检查发布内容
 npm login
-npm publish                                                    # 或先 npm version patch/minor
+npm publish                                                    # scope 包已声明 publishConfig.access = "public"，发布为公开包
 ```
 
 用户安装：
