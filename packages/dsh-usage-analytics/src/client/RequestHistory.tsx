@@ -239,7 +239,7 @@ export function RequestHistory(props: RequestHistoryProps): React.ReactElement {
                           `${c.label}${sortBy === c.field ? (order === 'asc' ? ' ↑' : ' ↓') : ''}`,
                         ),
                       ),
-                      ['Provider', 'Model', '输入', '缓存读', '缓存写', '输出', '状态'].map((h) =>
+                      ['Provider', 'Model', '输入', '缓存', '输出', '状态'].map((h) =>
                         React.createElement('th', { key: h, style: thStyle }, h),
                       ),
                     ),
@@ -257,8 +257,7 @@ export function RequestHistory(props: RequestHistoryProps): React.ReactElement {
                         React.createElement('td', { style: tdStyle }, r.provider ?? '—'),
                         React.createElement('td', { style: tdStyle }, r.model ?? '—'),
                         React.createElement('td', { style: tdStyle }, fmt(r.inputTokens)),
-                        React.createElement('td', { style: tdStyle }, fmt(r.cacheReadTokens)),
-                        React.createElement('td', { style: tdStyle }, fmt(r.cacheWriteTokens)),
+                        React.createElement('td', { style: tdStyle }, fmt((r.cacheReadTokens ?? 0) + (r.cacheWriteTokens ?? 0))),
                         React.createElement('td', { style: tdStyle }, fmt(r.outputTokens)),
                         React.createElement('td', { style: tdStyle }, statusLabel(r.status)),
                       ),

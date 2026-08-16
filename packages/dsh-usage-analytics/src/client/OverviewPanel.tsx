@@ -118,8 +118,7 @@ export function OverviewPanel(props: OverviewPanelProps): React.ReactElement {
               card('请求数', String(data.overview.requestCount)),
               card('总 Tokens', fmt(data.overview.totalTokens)),
               card('输入', fmt(data.overview.inputTokens)),
-              card('缓存读', fmt(data.overview.cacheReadTokens)),
-              card('缓存写', fmt(data.overview.cacheWriteTokens)),
+              card('缓存', fmt(data.overview.cachedInputTokens)),
               card('输出', fmt(data.overview.outputTokens)),
               card('成功率', fmtPct(data.overview.successRate)),
               card('缓存命中', fmtPct(data.overview.cacheHitRate)),
@@ -169,7 +168,7 @@ export function OverviewPanel(props: OverviewPanelProps): React.ReactElement {
                   React.createElement(
                     'tr',
                     null,
-                    ['时间', 'Provider', 'Model', '输入', '缓存读', '缓存写', '输出', '总量', '状态', '耗时'].map((h) =>
+                    ['时间', 'Provider', 'Model', '输入', '缓存', '输出', '总量', '状态', '耗时'].map((h) =>
                       React.createElement('th', { key: h, style: thStyle }, h),
                     ),
                   ),
@@ -185,8 +184,7 @@ export function OverviewPanel(props: OverviewPanelProps): React.ReactElement {
                       React.createElement('td', { style: tdStyle }, r.provider ?? '—'),
                       React.createElement('td', { style: tdStyle }, r.model ?? '—'),
                       React.createElement('td', { style: tdStyle }, fmt(r.inputTokens)),
-                      React.createElement('td', { style: tdStyle }, fmt(r.cacheReadTokens)),
-                      React.createElement('td', { style: tdStyle }, fmt(r.cacheWriteTokens)),
+                      React.createElement('td', { style: tdStyle }, fmt((r.cacheReadTokens ?? 0) + (r.cacheWriteTokens ?? 0))),
                       React.createElement('td', { style: tdStyle }, fmt(r.outputTokens)),
                       React.createElement('td', { style: tdStyle }, fmt(r.totalTokens)),
                       React.createElement('td', { style: tdStyle }, statusLabel(r.status)),
