@@ -22,6 +22,8 @@ export interface UsageAnalyticsPluginConfig {
   retention?: RetentionConfig;
   /** Retention sweep interval in ms (0 disables periodic sweeps). Default 6h. */
   retentionIntervalMs?: number;
+  /** Daily-stats recompute interval in ms (0 disables periodic recompute). Default 5 min. */
+  statsIntervalMs?: number;
 }
 
 /**
@@ -46,6 +48,7 @@ export function apply(ctx: Context, config: UsageAnalyticsPluginConfig = {}): vo
       flushBatchSize: config.flushBatchSize,
       retention: config.retention,
       retentionIntervalMs: config.retentionIntervalMs,
+      statsIntervalMs: config.statsIntervalMs,
       onError: (error) => logger.error('usage-analytics ledger error (degraded)', error),
     });
   } catch (error) {

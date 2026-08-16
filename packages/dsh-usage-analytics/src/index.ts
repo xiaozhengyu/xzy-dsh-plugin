@@ -44,6 +44,8 @@ export { MIGRATIONS, runMigrations } from './storage/Migration.js';
 export type { Migration } from './storage/Migration.js';
 export { UsageRepository } from './storage/UsageRepository.js';
 export type { RawEventInput, UsageRecordRow } from './storage/UsageRepository.js';
+export { DailyStatsRepository, localDayNumber, localDayStart } from './storage/DailyStatsRepository.js';
+export type { DailyStatsRow } from './storage/DailyStatsRepository.js';
 export { AsyncBatchWriter, defaultTimer } from './storage/AsyncBatchWriter.js';
 export type { AsyncBatchWriterOptions, Timer } from './storage/AsyncBatchWriter.js';
 

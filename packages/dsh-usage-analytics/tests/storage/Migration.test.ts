@@ -23,6 +23,7 @@ describe('runMigrations', () => {
         .map((r) => (r as { name: string }).name);
       expect(tables).toContain('usage_record');
       expect(tables).toContain('usage_raw_event');
+      expect(tables).toContain('usage_daily_stats');
     } finally {
       db.close();
     }
@@ -67,12 +68,13 @@ describe('runMigrations', () => {
     db.exec('PRAGMA user_version = 1'); // pretend 001 already applied
     runMigrations(db);
     try {
-      expect(userVersion(db)).toBe(2);
+      expect(userVersion(db)).toBe(MIGRATIONS[MIGRATIONS.length - 1]!.version);
       const tables = db
         .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
         .all()
         .map((r) => (r as { name: string }).name);
       expect(tables).toContain('usage_raw_event');
+      expect(tables).toContain('usage_daily_stats');
     } finally {
       db.close();
     }

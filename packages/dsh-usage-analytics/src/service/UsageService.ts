@@ -10,6 +10,7 @@ import type {
   TrendBucket,
 } from '../query/types.js';
 import { autoGranularity, StatisticsService } from './StatisticsService.js';
+import type { DailyStatsRepository } from '../storage/DailyStatsRepository.js';
 import type { UsageRecordRow } from '../storage/UsageRepository.js';
 import type { UsageRepository } from '../storage/UsageRepository.js';
 
@@ -20,7 +21,10 @@ import type { UsageRepository } from '../storage/UsageRepository.js';
  * (design §8.3 materialization deferred until performance requires).
  */
 export class UsageService {
-  constructor(private readonly repository: UsageRepository) {}
+  constructor(
+    private readonly repository: UsageRepository,
+    private readonly stats?: DailyStatsRepository,
+  ) {}
 
   /** Dashboard overview cards for a time range (design §3.1/§12). */
   getOverview(range: TimeRange): OverviewMetrics {
@@ -28,8 +32,13 @@ export class UsageService {
     return StatisticsService.overview(rows, range);
   }
 
-  /** Token/request/duration trend with auto or explicit granularity (design §3.2). */
+  /**
+   * Token/request/duration trend with auto or explicit granularity (design §3.2).
+   * Day granularity reads the usage_daily_stats aggregate (local-timezone day
+   * buckets, 360-day window); other granularities compute from usage_record.
+   */
   getTrend(range: TimeRange, granularity = autoGranularity(range)): TrendBucket[] {
+    if (granularity === 'day' && this.stats) return this.stats.trend(range);
     const rows = this.repository.scan(range.from, range.to);
     return StatisticsService.trend(rows, range, granularity);
   }
@@ -65,7 +74,7 @@ export class UsageService {
 
   /** Session detail: aggregate + its request list. */
   getSession(sessionId: string): SessionDetail | undefined {
-    const rows = this.repository.scan(undefined, undefined).filter((r) => r.sessionId === sessionId);
+    const rows = this.repository.listBySession(sessionId);
     if (rows.length === 0) return undefined;
     const stats = StatisticsService.sessionStats(rows).find((s) => s.sessionId === sessionId);
     if (!stats) return undefined;

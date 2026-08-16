@@ -122,6 +122,14 @@ export class UsageRepository {
     return rows.map(rowToUsageRecordRow);
   }
 
+  /** 某个会话的全部记录，按开始时间升序（走 (session_id, started_at) 索引，避免全表扫描）。 */
+  listBySession(sessionId: string): UsageRecordRow[] {
+    const rows = this.db
+      .prepare('SELECT * FROM usage_record WHERE session_id = ? ORDER BY started_at ASC, id ASC')
+      .all(sessionId) as Array<Record<string, unknown>>;
+    return rows.map(rowToUsageRecordRow);
+  }
+
   /** All rows with `started_at` in [startMs, endMs); unbounded when a bound is omitted. */
   scan(startMs?: number, endMs?: number): UsageRecordRow[] {
     const conditions: string[] = [];

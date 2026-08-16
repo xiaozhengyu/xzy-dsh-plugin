@@ -99,4 +99,18 @@ describe('UsageRepository', () => {
       db.close();
     }
   });
+
+  it('lists one session oldest-first without a full scan', () => {
+    const { db, repository } = repo();
+    try {
+      repository.insertRecord(makeRecord({ sessionId: 'sA', seq: 1, startedAt: 3000, completedAt: 4000 }));
+      repository.insertRecord(makeRecord({ sessionId: 'sB', seq: 2, startedAt: 1000, completedAt: 2000 }));
+      repository.insertRecord(makeRecord({ sessionId: 'sA', seq: 3, startedAt: 1000, completedAt: 2000 }));
+      const rows = repository.listBySession('sA');
+      expect(rows.map((r) => r.seq)).toEqual([3, 1]);
+      expect(repository.listBySession('nope')).toEqual([]);
+    } finally {
+      db.close();
+    }
+  });
 });

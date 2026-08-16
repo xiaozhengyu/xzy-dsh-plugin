@@ -84,10 +84,40 @@ function usageRawEventMigration(db: DatabaseSync): void {
     ON usage_raw_event (event_time)`);
 }
 
+function usageDailyStatsMigration(db: DatabaseSync): void {
+  // 日粒度聚合（本地时区自然日键 YYYYMMDD）。明细保留 60 天，聚合保留 360 天；
+  // 聚合由 DailyStatsRepository.recompute() 幂等重算（GROUP BY usage_record → UPSERT），
+  // 已超出明细保留期、不在 usage_record 中的历史日不会被重算触碰，天然保留。
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS usage_daily_stats (
+      id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+      day                INTEGER NOT NULL,
+      provider           TEXT    NOT NULL,
+      model              TEXT    NOT NULL,
+      request_count      INTEGER NOT NULL DEFAULT 0,
+      success_count      INTEGER NOT NULL DEFAULT 0,
+      error_count        INTEGER NOT NULL DEFAULT 0,
+      input_tokens       INTEGER NOT NULL DEFAULT 0,
+      cache_read_tokens  INTEGER NOT NULL DEFAULT 0,
+      cache_write_tokens INTEGER NOT NULL DEFAULT 0,
+      output_tokens      INTEGER NOT NULL DEFAULT 0,
+      total_tokens       INTEGER NOT NULL DEFAULT 0,
+      total_duration_ms  INTEGER NOT NULL DEFAULT 0,
+      created_at         INTEGER NOT NULL,
+      updated_at         INTEGER NOT NULL
+    ) STRICT
+  `);
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_usage_daily_stats_day_route
+    ON usage_daily_stats (day, provider, model)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_usage_daily_stats_day
+    ON usage_daily_stats (day)`);
+}
+
 /** Ordered migration list; `user_version` advances to the highest applied version. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'usage_record', up: usageRecordMigration },
   { version: 2, name: 'usage_raw_event', up: usageRawEventMigration },
+  { version: 3, name: 'usage_daily_stats', up: usageDailyStatsMigration },
 ];
 
 /**

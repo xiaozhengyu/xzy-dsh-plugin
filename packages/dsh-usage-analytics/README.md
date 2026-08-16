@@ -27,12 +27,13 @@ UsageRecord           —— onRecord 回调
 UsageLedger           —— SQLite 台账（Phase 2）
   ├─ AsyncBatchWriter —— 内存缓冲 + 去抖批量事务写入（不逐条落库）
   ├─ UsageRepository  —— 参数化 SQL，幂等 (session_id, seq)
-  ├─ Migration        —— PRAGMA user_version 版本化迁移（001 usage_record / 002 usage_raw_event）
-  └─ RetentionService —— 定期清理（usage 默认 365d / raw 默认 7d，可配 'forever'）
+  ├─ DailyStatsRepository —— 日聚合表（usage_daily_stats，幂等重算，本地时区日键）
+  ├─ Migration        —— PRAGMA user_version 版本化迁移（001 usage_record / 002 usage_raw_event / 003 usage_daily_stats）
+  └─ RetentionService —— 定期清理（明细 60d / 聚合 360d / raw 7d，可配 'forever'）
       ↓
 UsageService          —— Phase 3 查询门面（ledger.query() 获得）
-  └─ StatisticsService —— 纯聚合数学（overview/trend/provider/model/session + 百分位）
-  └─ UsageRepository   —— SQL 过滤/排序/分页（listRequests）
+  ├─ StatisticsService —— 纯聚合数学（overview/trend/provider/model/session + 百分位）
+  └─ UsageRepository   —— SQL 过滤/排序/分页（listRequests）+ 会话下推（listBySession）
 ```
 
 ### 关键语义（与 DSH rc.6 事实对齐，详见 harness-api.md §8 偏差清单）
@@ -53,7 +54,7 @@ const q = ledger.query();
 const day = { from: Date.now() - 24 * 3600 * 1000, to: Date.now() };
 
 q.getOverview(day);                    // 仪表盘卡片：tokens/cache/成功率/延迟百分位/效率
-q.getTrend(day, 'hour');               // 连续趋势（空桶补零；hour/day/week/month，日历月）
+q.getTrend(day, 'hour');               // 连续趋势（空桶补零；day 粒度读 usage_daily_stats，其余读明细）
 q.getProviderStats(day);               // 按 provider 聚合
 q.getModelStats(day);                  // 按 provider+model 聚合
 q.listRequests({ from: day.from, to: day.to, status: 'ERROR', sortBy: 'duration', order: 'desc', offset: 0, limit: 50 });
@@ -88,9 +89,11 @@ q.getSession(sessionId);               // session 详情 + 请求列表
         # flushIntervalMs: 1000      # 批量写入去抖间隔（0 = 手动 flush）
         # flushBatchSize: 100        # 达到该条数立即 flush
         # retention:
-        #   usageRecordsDays: 365    # 或 'forever'
+        #   usageRecordsDays: 60     # 明细保留（默认 60，或 'forever'）
         #   rawEventsDays: 7
+        #   statsDays: 360           # 日聚合保留（默认 360，或 'forever'）
         # retentionIntervalMs: 21600000  # 保留清理周期（默认 6h，0 = 关闭）
+        # statsIntervalMs: 300000        # 日聚合重算周期（默认 5min，0 = 关闭）
 ```
 
 ## 开发

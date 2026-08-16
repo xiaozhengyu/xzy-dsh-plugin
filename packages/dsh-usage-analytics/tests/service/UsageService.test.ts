@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { describe, expect, it } from 'vitest';
 import { UsageService } from '../../src/service/UsageService.js';
+import { DailyStatsRepository, localDayStart } from '../../src/storage/DailyStatsRepository.js';
 import { runMigrations } from '../../src/storage/Migration.js';
 import { UsageLedger } from '../../src/storage/UsageLedger.js';
 import { UsageRepository } from '../../src/storage/UsageRepository.js';
@@ -151,6 +152,35 @@ describe('UsageService', () => {
       expect(overview.totalTokens).toBe(15);
     } finally {
       ledger.dispose();
+    }
+  });
+
+  it('getTrend(day) reads the daily stats aggregate when wired', () => {
+    const db = new DatabaseSync(':memory:');
+    runMigrations(db);
+    const repository = new UsageRepository(db);
+    const stats = new DailyStatsRepository(db);
+    const service = new UsageService(repository, stats);
+    const day = localDayStart(20260816);
+    try {
+      repository.insertRecord(
+        makeRecord({
+          sessionId: 's1',
+          turn: 1,
+          step: 0,
+          seq: 1,
+          startedAt: day + 3_600_000,
+          completedAt: day + 3_601_000,
+          durationMs: 1000,
+          usage: { inputTokens: 60, cacheReadTokens: 20, cacheWriteTokens: 0, outputTokens: 20, totalTokens: 100 },
+        }),
+      );
+      stats.recompute();
+      const trend = service.getTrend({ from: day, to: day + 24 * 3_600_000 }, 'day');
+      expect(trend).toHaveLength(1);
+      expect(trend[0]).toMatchObject({ requestCount: 1, totalTokens: 100, avgDurationMs: 1000 });
+    } finally {
+      db.close();
     }
   });
 });

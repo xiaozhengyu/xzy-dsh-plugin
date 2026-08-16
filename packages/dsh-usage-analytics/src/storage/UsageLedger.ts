@@ -3,6 +3,7 @@ import type { UsageRecord } from '../model/UsageRecord.js';
 import { RetentionService, type RetentionConfig, type RetentionResult } from '../service/RetentionService.js';
 import { UsageService } from '../service/UsageService.js';
 import { AsyncBatchWriter, defaultTimer, type Timer } from './AsyncBatchWriter.js';
+import { DailyStatsRepository } from './DailyStatsRepository.js';
 import { openDatabase, type JournalMode } from './Database.js';
 import { runMigrations } from './Migration.js';
 import { UsageRepository, type UsageRecordRow } from './UsageRepository.js';
@@ -18,12 +19,15 @@ export interface UsageLedgerConfig {
   retention?: RetentionConfig;
   /** Retention sweep interval in ms; 0 disables the periodic sweep. Default 0. */
   retentionIntervalMs?: number;
+  /** Daily-stats recompute interval in ms; 0 disables the periodic recompute. Default 5 min. */
+  statsIntervalMs?: number;
   /** Called (best effort) when a write/retention failure is contained. */
   onError?(error: unknown): void;
   timer?: Timer;
 }
 
 const DEFAULT_RETENTION_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const DEFAULT_STATS_INTERVAL_MS = 5 * 60 * 1000;
 
 /**
  * Phase 2 facade: one owned SQLite database + migrations + repository +
@@ -36,18 +40,23 @@ export class UsageLedger {
   private readonly repository: UsageRepository;
   private readonly writer: AsyncBatchWriter<UsageRecord>;
   private readonly retention: RetentionService;
+  private readonly stats: DailyStatsRepository;
   private readonly retentionIntervalMs: number;
+  private readonly statsIntervalMs: number;
   private readonly reportError: (error: unknown) => void;
   private readonly timer: Timer;
   private retentionTimer?: { dispose(): void };
+  private statsTimer?: { dispose(): void };
   private disposed = false;
   private queryService?: UsageService;
 
   private constructor(db: DatabaseSync, config: UsageLedgerConfig) {
     this.db = db;
     this.repository = new UsageRepository(db);
+    this.stats = new DailyStatsRepository(db);
     this.retention = new RetentionService(db, config.retention);
     this.retentionIntervalMs = config.retentionIntervalMs ?? DEFAULT_RETENTION_INTERVAL_MS;
+    this.statsIntervalMs = config.statsIntervalMs ?? DEFAULT_STATS_INTERVAL_MS;
     this.reportError = config.onError ?? (() => undefined);
     this.timer = config.timer ?? defaultTimer;
     this.writer = new AsyncBatchWriter<UsageRecord>({
@@ -58,6 +67,7 @@ export class UsageLedger {
       flush: (records) => this.writeBatch(records),
     });
     this.runInitialRetention();
+    this.runInitialStats();
   }
 
   /**
@@ -99,10 +109,10 @@ export class UsageLedger {
     return this.repository.recent(limit);
   }
 
-  /** Phase 3 query facade over this ledger. */
+  /** Phase 3 query facade over this ledger (day-granular trend reads usage_daily_stats). */
   query(): UsageService {
     if (!this.queryService) {
-      this.queryService = new UsageService(this.repository);
+      this.queryService = new UsageService(this.repository, this.stats);
     }
     return this.queryService;
   }
@@ -113,6 +123,8 @@ export class UsageLedger {
     this.disposed = true;
     this.retentionTimer?.dispose();
     this.retentionTimer = undefined;
+    this.statsTimer?.dispose();
+    this.statsTimer = undefined;
     this.writer.dispose();
     try {
       this.db.close();
@@ -148,5 +160,21 @@ export class UsageLedger {
         this.reportError(error);
       }
     }, this.retentionIntervalMs);
+  }
+
+  private runInitialStats(): void {
+    if (this.statsIntervalMs <= 0) return;
+    try {
+      this.stats.recompute();
+    } catch (error) {
+      this.reportError(error);
+    }
+    this.statsTimer = this.timer.set(() => {
+      try {
+        this.stats.recompute();
+      } catch (error) {
+        this.reportError(error);
+      }
+    }, this.statsIntervalMs);
   }
 }

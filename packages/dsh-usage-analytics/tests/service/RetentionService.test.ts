@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { describe, expect, it } from 'vitest';
 import { RetentionService, retentionCutoff } from '../../src/service/RetentionService.js';
+import { DailyStatsRepository, localDayStart } from '../../src/storage/DailyStatsRepository.js';
 import { runMigrations } from '../../src/storage/Migration.js';
 import { UsageRepository } from '../../src/storage/UsageRepository.js';
 import { makeRecord } from '../helpers.js';
@@ -61,6 +62,25 @@ describe('RetentionService', () => {
       const result = service.run(NOW);
       expect(result.usageRecordsDeleted).toBe(0);
       expect(repository.count()).toBe(1);
+    } finally {
+      db.close();
+    }
+  });
+
+  it('deletes daily stats older than the stats window', () => {
+    const { db, repository } = setup();
+    const stats = new DailyStatsRepository(db);
+    try {
+      const oldDay = localDayStart(20260601);
+      const recentDay = localDayStart(20260815);
+      repository.insertRecord(makeRecord({ seq: 1, startedAt: oldDay + 3_600_000, completedAt: oldDay + 3_601_000 }));
+      repository.insertRecord(makeRecord({ seq: 2, turn: 1, step: 1, startedAt: recentDay + 3_600_000, completedAt: recentDay + 3_601_000 }));
+      stats.recompute(NOW);
+      expect(stats.count()).toBe(2);
+      const service = new RetentionService(db, { usageRecordsDays: 'forever', rawEventsDays: 'forever', statsDays: 30 });
+      const result = service.run(NOW);
+      expect(result.statsRowsDeleted).toBe(1);
+      expect(stats.count()).toBe(1);
     } finally {
       db.close();
     }

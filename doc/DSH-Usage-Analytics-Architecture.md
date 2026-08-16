@@ -1141,8 +1141,11 @@ async batch write
 默认：
 
 ```text
-Usage Records
-    365 days
+Usage Records（请求明细）
+    60 days
+
+Daily Statistics（日聚合）
+    360 days
 
 Raw Events
     7 days
@@ -1153,12 +1156,13 @@ Raw Events
 ```text
 7d
 30d
+60d
 90d
-180d
 365d
 Forever
 ```
 
+请求明细保留 60 天、日聚合保留 360 天：近期请求可追溯，历史趋势可长期保留；
 Raw Event 默认短期保留，因为 payload 可能非常大。
 
 ---
@@ -1221,7 +1225,9 @@ dsh-usage-analytics/
 │   ├── storage/
 │   │   ├── Database.ts
 │   │   ├── Migration.ts
-│   │   └── UsageRepository.ts
+│   │   ├── DailyStatsRepository.ts
+│   │   ├── UsageRepository.ts
+│   │   └── AsyncBatchWriter.ts
 │   │
 │   ├── service/
 │   │   ├── UsageService.ts

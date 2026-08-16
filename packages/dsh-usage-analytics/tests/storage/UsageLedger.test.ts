@@ -92,6 +92,7 @@ describe('UsageLedger', () => {
       dbPath: ':memory:',
       flushIntervalMs: 0,
       retentionIntervalMs: 1000,
+      statsIntervalMs: 0,
       retention: { usageRecordsDays: 365 },
       timer: fake.timer,
     });
