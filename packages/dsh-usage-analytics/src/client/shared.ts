@@ -54,6 +54,28 @@ export function fmtDate(ms: number): string {
   return new Date(ms).toISOString().slice(5, 16).replace('T', ' ');
 }
 
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+/** 本地时区短时间：MM-DD HH:mm。 */
+export function fmtTime(ms: number): string {
+  const d = new Date(ms);
+  return `${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+/** 本地时区短日期：MM-DD（趋势图横轴）。 */
+export function fmtDay(ms: number): string {
+  const d = new Date(ms);
+  return `${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+/** 本地时区日期输入值：YYYY-MM-DD。 */
+export function toLocalDateInput(ms: number): string {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
 export const cardStyle: CSSProperties = {
   background: 'var(--theme-surface, rgba(127,127,127,0.08))',
   borderRadius: 8,

@@ -41,4 +41,5 @@ export const palette = {
   warn: 'var(--dsw-alias-state-warn-primary, #d29922)',
   danger: 'var(--dsw-alias-state-error-primary, #e5534b)',
   skeleton: 'rgba(127,127,127,0.15)',
+  mask: 'rgba(0,0,0,0.45)',
 } as const;

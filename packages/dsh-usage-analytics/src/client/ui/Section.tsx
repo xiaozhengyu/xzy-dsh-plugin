@@ -4,7 +4,7 @@ import { font, palette, spacing } from './tokens.js';
 interface SectionProps {
   title: string;
   action?: React.ReactNode;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export function Section(props: SectionProps): React.ReactElement {

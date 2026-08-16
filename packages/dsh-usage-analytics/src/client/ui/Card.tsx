@@ -3,7 +3,7 @@ import { palette, radius, spacing } from './tokens.js';
 
 interface CardProps {
   style?: React.CSSProperties;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 /** 区域容器：低边框、弱阴影、小圆角 —— 有边界但不喧宾夺主。 */

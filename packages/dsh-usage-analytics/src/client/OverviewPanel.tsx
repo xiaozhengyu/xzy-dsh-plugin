@@ -1,6 +1,6 @@
 /**
- * 用量分析 —— 概览 Tab。
- * 指标卡片 + 每日趋势 + Provider / Model 分布 + 最近请求 + 会话排行。
+ * 用量分析 —— 概览 Tab（UI 2.0）。
+ * 信息层级：核心 KPI → Token 用量 / 性能 → 趋势 → Provider / Model → 最近请求 / 会话排行。
  */
 import React from 'react';
 import type {
@@ -15,24 +15,21 @@ import type { UsageRecordRow } from '../storage/UsageRepository.js';
 import type { UsageRemote } from './client-types.js';
 import {
   btnStyle,
-  cardStyle,
+  filterInputStyle,
   fmt,
-  fmtDate,
+  fmtDay,
   fmtMs,
   fmtPct,
-  labelStyle,
+  fmtTime,
   PRESET_KEYS,
   presetLabel,
   presetRange,
-  sectionTitleStyle,
-  tableStyle,
-  tableWrapStyle,
-  tdStyle,
-  thStyle,
+  toLocalDateInput,
   unwrap,
-  valueStyle,
   type PresetKey,
 } from './shared.js';
+import { Card, ChartSkeleton, EmptyState, KpiSkeleton, ListSkeleton, Section, StatCard, statusBadge } from './ui/index.js';
+import { font, palette, radius, spacing } from './ui/tokens.js';
 
 interface OverviewPanelProps {
   usage: UsageRemote | undefined;
@@ -47,17 +44,43 @@ interface OverviewData {
   sessions: SessionStats[];
 }
 
+type RangePreset = PresetKey | 'custom';
+type TrendMetric = 'tokens' | 'requests';
+
+const DAY_MS = 24 * 3_600_000;
+
 export function OverviewPanel(props: OverviewPanelProps): React.ReactElement {
   const { usage } = props;
-  const [preset, setPreset] = React.useState<PresetKey>('7d');
-  const [data, setData] = React.useState<OverviewData | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
+  const [preset, setPreset] = React.useState<RangePreset>('7d');
+  const [customFrom, setCustomFrom] = React.useState('');
+  const [customTo, setCustomTo] = React.useState('');
   const [autoRefresh, setAutoRefresh] = React.useState(false);
   const [refreshTick, setRefreshTick] = React.useState(0);
+  const [reload, setReload] = React.useState(0);
+  const [data, setData] = React.useState<OverviewData | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const [updatedAt, setUpdatedAt] = React.useState<number | null>(null);
+  const [trendMetric, setTrendMetric] = React.useState<TrendMetric>('tokens');
   const hasDataRef = React.useRef(false);
   hasDataRef.current = data !== null;
 
-  // 自动刷新：开启后每 30s 触发一次重拉。
+  const range = React.useMemo(() => {
+    if (preset !== 'custom') return presetRange(preset);
+    const from = customFrom ? new Date(`${customFrom}T00:00:00`).getTime() : Number.NaN;
+    const to = customTo ? new Date(`${customTo}T00:00:00`).getTime() + DAY_MS : Number.NaN;
+    if (!Number.isFinite(from) || !Number.isFinite(to) || from >= to) return null;
+    return { from, to };
+  }, [preset, customFrom, customTo]);
+
+  const selectPreset = (key: RangePreset): void => {
+    if (key === 'custom' && customFrom === '' && customTo === '') {
+      const to = new Date();
+      setCustomFrom(toLocalDateInput(to.getTime() - 30 * DAY_MS));
+      setCustomTo(toLocalDateInput(to.getTime()));
+    }
+    setPreset(key);
+  };
+
   React.useEffect(() => {
     if (!autoRefresh) return;
     const timer = setInterval(() => setRefreshTick((tick) => tick + 1), 30_000);
@@ -70,7 +93,11 @@ export function OverviewPanel(props: OverviewPanelProps): React.ReactElement {
       setData(null);
       return;
     }
-    const range = presetRange(preset);
+    if (!range) {
+      setError(null);
+      setData(null);
+      return;
+    }
     let cancelled = false;
     setError(null);
     void (async () => {
@@ -85,182 +112,387 @@ export function OverviewPanel(props: OverviewPanelProps): React.ReactElement {
         ]);
         if (cancelled) return;
         setData({ overview, trend, providers, models, requests: requestPage.items, sessions });
+        setUpdatedAt(Date.now());
       } catch (caught) {
         if (cancelled) return;
-        // 已有数据时静默失败（保留旧视图），仅首载失败展示错误。
         if (!hasDataRef.current) setError(caught instanceof Error ? caught.message : String(caught));
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [usage, preset, refreshTick]);
+  }, [usage, range, refreshTick, reload]);
 
-  const maxTrend = data ? Math.max(1, ...data.trend.map((b) => b.totalTokens)) : 1;
+  const controls = React.createElement(
+    'div',
+    { style: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: spacing.md, marginBottom: spacing.lg } },
+    React.createElement(
+      'div',
+      { style: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs } },
+      (['today', '7d', '30d', 'custom'] as RangePreset[]).map((key) =>
+        React.createElement(
+          'button',
+          { key: key, style: btnStyle(preset === key), onClick: () => selectPreset(key), type: 'button' },
+          key === 'custom' ? '自定义' : presetLabel(key as PresetKey),
+        ),
+      ),
+      preset === 'custom'
+        ? React.createElement(
+            React.Fragment,
+            null,
+            React.createElement('input', {
+              type: 'date',
+              style: filterInputStyle,
+              value: customFrom,
+              onChange: (e: React.ChangeEvent<HTMLInputElement>) => setCustomFrom(e.target.value),
+            }),
+            React.createElement('span', { style: { fontSize: font.label, color: palette.labelTertiary } }, '至'),
+            React.createElement('input', {
+              type: 'date',
+              style: filterInputStyle,
+              value: customTo,
+              onChange: (e: React.ChangeEvent<HTMLInputElement>) => setCustomTo(e.target.value),
+            }),
+          )
+        : null,
+    ),
+    React.createElement(
+      'div',
+      { style: { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: spacing.xs } },
+      updatedAt !== null
+        ? React.createElement(
+            'span',
+            { style: { fontSize: font.caption, color: palette.labelTertiary, marginRight: spacing.sm } },
+            `更新于 ${fmtTime(updatedAt)}`,
+          )
+        : null,
+      React.createElement(
+        'button',
+        { style: btnStyle(autoRefresh), onClick: () => setAutoRefresh((v) => !v), title: '开启后每 30 秒自动刷新', type: 'button' },
+        autoRefresh ? '自动刷新：开' : '自动刷新',
+      ),
+      React.createElement(
+        'button',
+        { style: btnStyle(false), onClick: () => setReload((r) => r + 1), title: '立即重新加载', type: 'button' },
+        '刷新',
+      ),
+    ),
+  );
+
+  if (error !== null && data === null) {
+    return React.createElement(
+      'div',
+      null,
+      controls,
+      React.createElement(
+        'div',
+        { style: { color: palette.danger } },
+        React.createElement('span', null, `加载失败：${error}`),
+        React.createElement(
+          'button',
+          { style: { ...btnStyle(false), marginLeft: spacing.sm }, onClick: () => setReload((r) => r + 1), type: 'button' },
+          '重试',
+        ),
+      ),
+    );
+  }
+
+  if (data === null) {
+    return React.createElement(
+      'div',
+      null,
+      controls,
+      React.createElement(KpiSkeleton, null),
+      React.createElement('div', { style: { marginTop: spacing.lg } }, React.createElement(ChartSkeleton, null)),
+      React.createElement('div', { style: { marginTop: spacing.lg } }, React.createElement(ListSkeleton, null)),
+    );
+  }
+
+  if (data.overview.requestCount === 0) {
+    return React.createElement(
+      'div',
+      null,
+      controls,
+      React.createElement(
+        Card,
+        { style: { marginTop: spacing.lg } },
+        React.createElement(EmptyState, { title: '当前时间范围暂无数据', description: '换个时间范围试试，或先发起一些请求。' }),
+      ),
+    );
+  }
+
+  const maxSessionTokens = Math.max(1, ...data.sessions.slice(0, 5).map((s) => s.totalTokens));
 
   return React.createElement(
     'div',
     null,
+    controls,
     React.createElement(
       'div',
-      { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, marginLeft: 'auto' } },
+      { style: { display: 'flex', flexWrap: 'wrap', gap: spacing.md } },
+      React.createElement(StatCard, { label: '请求数', value: String(data.overview.requestCount) }),
+      React.createElement(StatCard, { label: '总 Tokens', value: fmt(data.overview.totalTokens) }),
+      React.createElement(StatCard, { label: '成功率', value: fmtPct(data.overview.successRate) }),
+      React.createElement(StatCard, { label: '缓存命中', value: fmtPct(data.overview.cacheHitRate) }),
+    ),
+    React.createElement(
+      'div',
+      { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: spacing.md, marginTop: spacing.lg } },
       React.createElement(
-        'div',
-        { style: { display: 'flex', alignItems: 'center', gap: 8 } },
-        PRESET_KEYS.map((key) =>
-          React.createElement(
-            'button',
-            { key: key, style: btnStyle(preset === key), onClick: () => setPreset(key) },
-            presetLabel(key),
+        Card,
+        null,
+        React.createElement('div', { style: cardTitleStyle }, 'Token 用量'),
+        tokenRow('输入', data.overview.inputTokens, data.overview.totalTokens),
+        tokenRow('缓存', data.overview.cachedInputTokens, data.overview.totalTokens),
+        tokenRow('输出', data.overview.outputTokens, data.overview.totalTokens),
+        tokenRow('总量', data.overview.totalTokens, data.overview.totalTokens, true),
+      ),
+      React.createElement(
+        Card,
+        null,
+        React.createElement('div', { style: cardTitleStyle }, '性能'),
+        metricRow('平均耗时', fmtMs(data.overview.avgDurationMs)),
+        metricRow('P95', fmtMs(data.overview.p95DurationMs)),
+        metricRow('Tokens/请求', fmt(data.overview.tokensPerRequest)),
+      ),
+    ),
+    React.createElement(
+      Section,
+      {
+        title: 'Token 趋势',
+        action: React.createElement(
+          'div',
+          { style: { display: 'flex', gap: spacing.xs } },
+          (['tokens', 'requests'] as TrendMetric[]).map((m) =>
+            React.createElement(
+              'button',
+              { key: m, style: btnStyle(trendMetric === m), onClick: () => setTrendMetric(m), type: 'button' },
+              m === 'tokens' ? 'Tokens' : '请求数',
+            ),
           ),
         ),
-        React.createElement(
-          'button',
-          { style: btnStyle(autoRefresh), onClick: () => setAutoRefresh((value) => !value), title: '开启后每 30 秒自动刷新' },
-          autoRefresh ? '自动刷新：开' : '自动刷新',
-        ),
-        React.createElement(
-          'button',
-          { style: btnStyle(false), onClick: () => setRefreshTick((tick) => tick + 1), title: '立即重新加载' },
-          '刷新',
+      },
+      React.createElement(Card, null, React.createElement(TrendChart, { buckets: data.trend, metric: trendMetric })),
+    ),
+    React.createElement(
+      Section,
+      { title: 'Provider 与 Model' },
+      React.createElement(
+        'div',
+        { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: spacing.md } },
+        React.createElement(Card, null, routeBars('Provider', data.providers.map((p) => ({ name: p.provider, requestCount: p.requestCount, totalTokens: p.totalTokens })))),
+        React.createElement(Card, null, routeBars('Model', data.models.map((m) => ({ name: m.model, requestCount: m.requestCount, totalTokens: m.totalTokens })))),
+      ),
+    ),
+    React.createElement(
+      Section,
+      { title: '最近请求' },
+      React.createElement(
+        Card,
+        null,
+        data.requests.length === 0
+          ? React.createElement(EmptyState, { title: '该范围内没有请求记录' })
+          : data.requests.map((r) => recentRow(r)),
+      ),
+    ),
+    React.createElement(
+      Section,
+      { title: '会话排行（按 Token）' },
+      React.createElement(
+        Card,
+        null,
+        data.sessions.slice(0, 5).map((s, i) =>
+          sessionRow(s, i, maxSessionTokens),
         ),
       ),
     ),
-    error !== null
-      ? React.createElement('div', { style: { color: 'var(--theme-danger, #e5534b)' } }, `加载失败：${error}`)
-      : data === null
-        ? React.createElement('div', { style: { opacity: 0.6 } }, '加载中…')
-        : React.createElement(
-            React.Fragment,
-            null,
-            React.createElement(
-              'div',
-              { style: { display: 'flex', flexWrap: 'wrap', gap: 10 } },
-              card('请求数', String(data.overview.requestCount)),
-              card('总 Tokens', fmt(data.overview.totalTokens)),
-              card('输入', fmt(data.overview.inputTokens)),
-              card('缓存', fmt(data.overview.cachedInputTokens)),
-              card('输出', fmt(data.overview.outputTokens)),
-              card('成功率', fmtPct(data.overview.successRate)),
-              card('缓存命中', fmtPct(data.overview.cacheHitRate)),
-              card('平均耗时', fmtMs(data.overview.avgDurationMs)),
-              card('P95', fmtMs(data.overview.p95DurationMs)),
-              card('Tokens/请求', fmt(data.overview.tokensPerRequest)),
-            ),
-            React.createElement('div', { style: sectionTitleStyle }, '每日 Token 趋势'),
-            React.createElement(
-              'div',
-              { style: { display: 'flex', flexDirection: 'column', gap: 4 } },
-              data.trend.slice(-14).map((bucket) =>
-                React.createElement(
-                  'div',
-                  { key: bucket.bucketStart, style: { display: 'flex', alignItems: 'center', gap: 8 } },
-                  React.createElement('span', { style: { width: 90, fontSize: 12, opacity: 0.7 } }, fmtDate(bucket.bucketStart)),
-                  React.createElement('div', {
-                    style: {
-                      height: 10,
-                      width: `${Math.max(2, (bucket.totalTokens / maxTrend) * 100)}%`,
-                      background: 'var(--theme-primary, rgba(120,160,255,0.7))',
-                      borderRadius: 3,
-                    },
-                  }),
-                  React.createElement('span', { style: { fontSize: 12, fontVariantNumeric: 'tabular-nums' } }, fmt(bucket.totalTokens)),
-                ),
-              ),
-            ),
-            React.createElement('div', { style: sectionTitleStyle }, 'Provider 分布'),
-            statsTable(
-              data.providers.map((p) => [p.provider, String(p.requestCount), fmt(p.totalTokens), fmtPct(p.successRate)]),
-            ),
-            React.createElement('div', { style: sectionTitleStyle }, 'Model 分布'),
-            statsTable(
-              data.models.map((m) => [m.model, String(m.requestCount), fmt(m.totalTokens), fmtPct(m.successRate)]),
-            ),
-            React.createElement('div', { style: sectionTitleStyle }, '最近请求'),
-            React.createElement(
-              'div',
-              { style: tableWrapStyle },
-              React.createElement(
-                'table',
-                { style: tableStyle },
-                React.createElement(
-                  'thead',
-                  null,
-                  React.createElement(
-                    'tr',
-                    null,
-                    ['时间', 'Provider', 'Model', '输入', '缓存', '输出', '总量', '状态', '耗时'].map((h) =>
-                      React.createElement('th', { key: h, style: thStyle }, h),
-                    ),
-                  ),
-                ),
-                React.createElement(
-                  'tbody',
-                  null,
-                  data.requests.map((r) =>
-                    React.createElement(
-                      'tr',
-                      { key: r.id },
-                      React.createElement('td', { style: tdStyle }, fmtDate(r.startedAt)),
-                      React.createElement('td', { style: tdStyle }, r.provider ?? '—'),
-                      React.createElement('td', { style: tdStyle }, r.model ?? '—'),
-                      React.createElement('td', { style: tdStyle }, fmt(r.inputTokens)),
-                      React.createElement('td', { style: tdStyle }, fmt((r.cacheReadTokens ?? 0) + (r.cacheWriteTokens ?? 0))),
-                      React.createElement('td', { style: tdStyle }, fmt(r.outputTokens)),
-                      React.createElement('td', { style: tdStyle }, fmt(r.totalTokens)),
-                      React.createElement('td', { style: tdStyle }, statusLabel(r.status)),
-                      React.createElement('td', { style: tdStyle }, fmtMs(r.durationMs)),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            React.createElement('div', { style: sectionTitleStyle }, '会话排行（按 Token）'),
-            statsTable(
-              data.sessions.slice(0, 5).map((s) => [shortId(s), String(s.requestCount), fmt(s.totalTokens), fmtPct(s.successRate)]),
-            ),
-          ),
   );
 }
 
-function shortId(session: SessionStats): string {
-  return session.sessionId.length > 18 ? `${session.sessionId.slice(0, 8)}…${session.sessionId.slice(-6)}` : session.sessionId;
-}
+const cardTitleStyle: React.CSSProperties = {
+  fontSize: font.cardTitle,
+  fontWeight: 600,
+  color: palette.labelPrimary,
+  marginBottom: spacing.lg,
+};
 
-function statusLabel(status: string): string {
-  const labels: Record<string, string> = {
-    SUCCESS: '成功',
-    ERROR: '错误',
-    ABORTED: '中断',
-    MAX_TOKENS: '达到上限',
-    UNKNOWN: '未知',
-  };
-  return labels[status] ?? status;
-}
-
-function card(label: string, value: string): React.ReactElement {
+function tokenRow(label: string, value: number, total: number, full = false): React.ReactElement {
+  const pct = total > 0 ? (value / total) * 100 : 0;
   return React.createElement(
     'div',
-    { style: cardStyle },
-    React.createElement('div', { style: labelStyle }, label),
-    React.createElement('div', { style: valueStyle }, value),
+    { style: { marginBottom: spacing.md } },
+    React.createElement(
+      'div',
+      { style: { display: 'flex', justifyContent: 'space-between', fontSize: font.body } },
+      React.createElement('span', { style: { color: palette.labelSecondary } }, label),
+      React.createElement('span', { style: { color: palette.labelPrimary, fontVariantNumeric: 'tabular-nums' } }, fmt(value)),
+    ),
+    React.createElement(
+      'div',
+      { style: { height: 6, background: palette.skeleton, borderRadius: 3, marginTop: spacing.xs } },
+      React.createElement('div', {
+        style: {
+          height: '100%',
+          width: `${full ? 100 : Math.min(100, Math.max(1, pct))}%`,
+          background: full ? palette.labelTertiary : palette.primary,
+          borderRadius: 3,
+        },
+      }),
+    ),
   );
 }
 
-function statsTable(rows: Array<Array<string>>): React.ReactElement {
+function metricRow(label: string, value: string): React.ReactElement {
   return React.createElement(
-    'table',
-    { style: tableStyle },
+    'div',
+    { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: `${spacing.sm}px 0`, borderBottom: `1px solid ${palette.borderSubtle}`, fontSize: font.body } },
+    React.createElement('span', { style: { color: palette.labelSecondary } }, label),
+    React.createElement('span', { style: { color: palette.labelPrimary, fontWeight: 500, fontVariantNumeric: 'tabular-nums' } }, value),
+  );
+}
+
+function TrendChart(props: { buckets: TrendBucket[]; metric: TrendMetric }): React.ReactElement {
+  const { buckets, metric } = props;
+  const values = buckets.map((b) => (metric === 'tokens' ? b.totalTokens : b.requestCount));
+  const max = Math.max(1, ...values);
+  const W = 640;
+  const H = 180;
+  const PAD_X = 44;
+  const PAD_TOP = 12;
+  const PAD_BOTTOM = 24;
+  const n = values.length;
+  const x = (i: number): number => (n <= 1 ? PAD_X : PAD_X + (i * (W - 2 * PAD_X)) / (n - 1));
+  const y = (v: number): number => H - PAD_BOTTOM - (v / max) * (H - PAD_TOP - PAD_BOTTOM);
+  const points = values.map((v, i) => [x(i), y(v)] as const);
+  const line = points.map(([px, py]) => `${px},${py}`).join(' ');
+  const area = points.length > 1 ? `M${points[0]![0]},${H - PAD_BOTTOM} L${line.replace(/ /g, ' L')} L${points[points.length - 1]![0]},${H - PAD_BOTTOM} Z` : '';
+  const labelStep = Math.max(1, Math.ceil(n / 6));
+
+  return React.createElement(
+    'svg',
+    { viewBox: `0 0 ${W} ${H}`, style: { width: '100%', height: 'auto', display: 'block' } },
+    [0, 0.5, 1].map((f) =>
+      React.createElement(
+        'g',
+        { key: f },
+        React.createElement('line', {
+          x1: PAD_X,
+          x2: W - PAD_X,
+          y1: y(max * f),
+          y2: y(max * f),
+          stroke: palette.borderSubtle,
+          strokeWidth: 1,
+        }),
+        React.createElement('text', {
+          x: PAD_X - 6,
+          y: y(max * f) + 3,
+          textAnchor: 'end',
+          fontSize: 10,
+          fill: palette.labelTertiary,
+        }, fmt(max * f)),
+      ),
+    ),
+    points.length > 1
+      ? React.createElement('path', { d: area, fill: palette.primary, opacity: 0.15 })
+      : null,
+    React.createElement('polyline', {
+      points: line,
+      fill: 'none',
+      stroke: palette.primary,
+      strokeWidth: 2,
+      strokeLinejoin: 'round',
+      strokeLinecap: 'round',
+    }),
+    buckets.map((b, i) =>
+      i % labelStep === 0 || i === buckets.length - 1
+        ? React.createElement('text', {
+            key: b.bucketStart,
+            x: x(i),
+            y: H - 8,
+            textAnchor: 'middle',
+            fontSize: 10,
+            fill: palette.labelTertiary,
+          }, fmtDay(b.bucketStart))
+        : null,
+    ),
+  );
+}
+
+function routeBars(title: string, items: Array<{ name: string; requestCount: number; totalTokens: number }>): React.ReactElement {
+  const max = Math.max(1, ...items.map((i) => i.totalTokens));
+  return React.createElement(
+    'div',
+    null,
+    items.length === 0
+      ? React.createElement(EmptyState, { title: '暂无数据' })
+      : items.map((item) =>
+          React.createElement(
+            'div',
+            { key: item.name, style: { marginBottom: spacing.md } },
+            React.createElement(
+              'div',
+              { style: { display: 'flex', justifyContent: 'space-between', gap: spacing.md, fontSize: font.body } },
+              React.createElement('span', { style: { color: palette.labelPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, item.name),
+              React.createElement('span', { style: { color: palette.labelTertiary, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' } }, `${item.requestCount} 请求 · ${fmt(item.totalTokens)}`),
+            ),
+            React.createElement(
+              'div',
+              { style: { height: 8, background: palette.skeleton, borderRadius: 4, marginTop: spacing.xs } },
+              React.createElement('div', {
+                style: { height: '100%', width: `${Math.max(1, (item.totalTokens / max) * 100)}%`, background: palette.primary, borderRadius: 4 },
+              }),
+            ),
+          ),
+        ),
+  );
+}
+
+function recentRow(row: UsageRecordRow): React.ReactElement {
+  return React.createElement(
+    'div',
+    {
+      key: row.id,
+      style: { display: 'flex', alignItems: 'center', gap: spacing.md, padding: `${spacing.sm}px ${spacing.xs}px`, borderBottom: `1px solid ${palette.borderSubtle}`, fontSize: font.body },
+    },
+    React.createElement('span', { style: { width: 110, flex: 'none', fontSize: font.caption, color: palette.labelTertiary, fontVariantNumeric: 'tabular-nums' } }, fmtTime(row.startedAt)),
     React.createElement(
-      'tbody',
-      null,
-      rows.map((cells, i) =>
+      'div',
+      { style: { flex: 1, minWidth: 0 } },
+      React.createElement('div', { style: { color: palette.labelPrimary, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.model ?? '—'),
+      React.createElement('div', { style: { fontSize: font.caption, color: palette.labelTertiary } }, row.provider ?? '—'),
+    ),
+    React.createElement('span', { style: { width: 110, flex: 'none', textAlign: 'right', color: palette.labelPrimary, fontVariantNumeric: 'tabular-nums' } }, fmt(row.totalTokens)),
+    React.createElement('span', { style: { width: 70, flex: 'none', textAlign: 'right', color: palette.labelSecondary, fontVariantNumeric: 'tabular-nums' } }, fmtMs(row.durationMs)),
+    React.createElement('div', { style: { width: 90, flex: 'none', textAlign: 'right' } }, statusBadge(row.status)),
+  );
+}
+
+function sessionRow(session: SessionStats, index: number, maxTokens: number): React.ReactElement {
+  const id = session.sessionId.length > 18 ? `${session.sessionId.slice(0, 8)}…${session.sessionId.slice(-6)}` : session.sessionId;
+  return React.createElement(
+    'div',
+    { key: session.sessionId, style: { marginBottom: spacing.md } },
+    React.createElement(
+      'div',
+      { style: { display: 'flex', alignItems: 'center', gap: spacing.md, fontSize: font.body } },
+      React.createElement('span', { style: { color: palette.labelTertiary, fontVariantNumeric: 'tabular-nums' } }, String(index + 1).padStart(2, '0')),
+      React.createElement(
+        'div',
+        { style: { flex: 1, minWidth: 0 } },
         React.createElement(
-          'tr',
-          { key: i },
-          cells.map((cell, j) => React.createElement('td', { key: j, style: tdStyle }, cell)),
+          'div',
+          { style: { display: 'flex', justifyContent: 'space-between', gap: spacing.md } },
+          React.createElement('span', { style: { color: palette.labelPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, id),
+          React.createElement('span', { style: { color: palette.labelTertiary, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' } }, `${session.requestCount} 请求 · ${fmt(session.totalTokens)}`),
         ),
       ),
+    ),
+    React.createElement(
+      'div',
+      { style: { height: 6, background: palette.skeleton, borderRadius: 3, marginTop: spacing.xs, marginLeft: spacing.xl } },
+      React.createElement('div', {
+        style: { height: '100%', width: `${Math.max(1, (session.totalTokens / maxTokens) * 100)}%`, background: palette.primary, borderRadius: 3, opacity: 0.8 },
+      }),
     ),
   );
 }
