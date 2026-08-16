@@ -68,6 +68,9 @@ export const tableStyle: CSSProperties = {
   borderCollapse: 'collapse',
   fontSize: 13,
 };
+export const tableWrapStyle: CSSProperties = {
+  overflowX: 'auto',
+};
 export const thStyle: CSSProperties = {
   textAlign: 'left',
   padding: '6px 8px',

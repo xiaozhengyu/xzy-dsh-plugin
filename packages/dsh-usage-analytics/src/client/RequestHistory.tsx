@@ -18,6 +18,7 @@ import {
   presetLabel,
   presetRange,
   tableStyle,
+  tableWrapStyle,
   tdStyle,
   thStyle,
   unwrap,
@@ -220,43 +221,47 @@ export function RequestHistory(props: RequestHistoryProps): React.ReactElement {
               React.Fragment,
               null,
               React.createElement(
-                'table',
-                { style: tableStyle },
+                'div',
+                { style: tableWrapStyle },
                 React.createElement(
-                  'thead',
-                  null,
+                  'table',
+                  { style: tableStyle },
                   React.createElement(
-                    'tr',
+                    'thead',
                     null,
-                    SORTABLE_COLUMNS.map((c) =>
-                      React.createElement(
-                        'th',
-                        { key: c.field, style: { ...thStyle, cursor: 'pointer', userSelect: 'none' }, onClick: () => onSort(c.field) },
-                        `${c.label}${sortBy === c.field ? (order === 'asc' ? ' ↑' : ' ↓') : ''}`,
-                      ),
-                    ),
-                    ['Provider', 'Model', '输入', '缓存读', '缓存写', '输出', '状态'].map((h) =>
-                      React.createElement('th', { key: h, style: thStyle }, h),
-                    ),
-                  ),
-                ),
-                React.createElement(
-                  'tbody',
-                  null,
-                  data.items.map((r) =>
                     React.createElement(
                       'tr',
-                      { key: r.id },
-                      React.createElement('td', { style: tdStyle }, fmtDate(r.startedAt)),
-                      React.createElement('td', { style: tdStyle }, fmtMs(r.durationMs)),
-                      React.createElement('td', { style: tdStyle }, fmt(r.totalTokens)),
-                      React.createElement('td', { style: tdStyle }, r.provider ?? '—'),
-                      React.createElement('td', { style: tdStyle }, r.model ?? '—'),
-                      React.createElement('td', { style: tdStyle }, fmt(r.inputTokens)),
-                      React.createElement('td', { style: tdStyle }, fmt(r.cacheReadTokens)),
-                      React.createElement('td', { style: tdStyle }, fmt(r.cacheWriteTokens)),
-                      React.createElement('td', { style: tdStyle }, fmt(r.outputTokens)),
-                      React.createElement('td', { style: tdStyle }, statusLabel(r.status)),
+                      null,
+                      SORTABLE_COLUMNS.map((c) =>
+                        React.createElement(
+                          'th',
+                          { key: c.field, style: { ...thStyle, cursor: 'pointer', userSelect: 'none' }, onClick: () => onSort(c.field) },
+                          `${c.label}${sortBy === c.field ? (order === 'asc' ? ' ↑' : ' ↓') : ''}`,
+                        ),
+                      ),
+                      ['Provider', 'Model', '输入', '缓存读', '缓存写', '输出', '状态'].map((h) =>
+                        React.createElement('th', { key: h, style: thStyle }, h),
+                      ),
+                    ),
+                  ),
+                  React.createElement(
+                    'tbody',
+                    null,
+                    data.items.map((r) =>
+                      React.createElement(
+                        'tr',
+                        { key: r.id },
+                        React.createElement('td', { style: tdStyle }, fmtDate(r.startedAt)),
+                        React.createElement('td', { style: tdStyle }, fmtMs(r.durationMs)),
+                        React.createElement('td', { style: tdStyle }, fmt(r.totalTokens)),
+                        React.createElement('td', { style: tdStyle }, r.provider ?? '—'),
+                        React.createElement('td', { style: tdStyle }, r.model ?? '—'),
+                        React.createElement('td', { style: tdStyle }, fmt(r.inputTokens)),
+                        React.createElement('td', { style: tdStyle }, fmt(r.cacheReadTokens)),
+                        React.createElement('td', { style: tdStyle }, fmt(r.cacheWriteTokens)),
+                        React.createElement('td', { style: tdStyle }, fmt(r.outputTokens)),
+                        React.createElement('td', { style: tdStyle }, statusLabel(r.status)),
+                      ),
                     ),
                   ),
                 ),
