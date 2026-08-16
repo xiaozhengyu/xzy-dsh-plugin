@@ -392,9 +392,22 @@ dshHomePath(...segments: string[]): string;  // 拼接在解析后的 home 上
 
 ### 7.2 没有独立 Dashboard 页面 Slot（关键限制）
 
-- Frame 座位：`root`（禁止注册）、`sidebar`、`conversation`、`details`、`shell.overlay`。
-- 最接近"页面"的座位：`conversation.view`（会话页签，trajectory 即此模式）与 `settings.section`（root 作用域模态页）。新 Slot 只能通过已占用条目的 `children:` 声明。
-- → **Phase 4 Dashboard 的现实方案**：`settings.section` 注册全屏 Analytics 设置/统计页，或 `conversation.view` 注册会话内 Usage 页签；或 `sidebar`/`shell.overlay` 提供入口。最终取舍留待 Phase 4，在此锁定存在性。
+- Frame 座位：`root`（禁止注册——会替换整个 AppFrame）、`sidebar`、`conversation`、`details`（均为 single，注册即替换已占用者——文档化的反模式）、`shell.overlay`（list/root 加法浮层）。
+- 最接近"页面"的座位：`conversation.view`（list/session 页签，trajectory 即此模式：`id: 'trajectory'`, `order: 10`）与 `settings.section`（list/root 模态内整页）。新 Slot 只能通过已占用条目的 `children:` 声明，不能独立声明。
+- → **Phase 4 Dashboard 的现实方案**：(a) `conversation.view` 注册会话内 Usage 页签（可复用 session 标准 kit：`useSession`/`useProjection`/`sessionId`）；(b) `settings.section` 注册 root 作用域统计页（只拿到全局 kit，数据需经 Typert RPC 拉取）；(c) `shell.overlay` 浮层。最终取舍留待 Phase 4，在此锁定存在性。
+
+标准注册模式（目标 slot 由其他包声明时必须与 `slots.inject` 配对，保证声明期顺序安全）：
+
+```js
+// settings.section 范例（对照 dsh-client-ui-settings-models/lib/client.js）
+ctx.slots.inject('settings.section', () => ctx.slots.register({
+  name: 'settings.section',
+  id: 'usage-analytics',        // list 槽位：id 为节键，order 为导航位置，label 为导航文案（可懒求值）
+  order: 20,
+  label: () => 'Usage Analytics',
+  inject: injected,             // 可选：注入面（hooks 舱）
+}, AnalyticsSection));
+```
 
 ### 7.3 Host↔Client RPC（打包插件用 Typert，非 harness.handle）
 
