@@ -136,8 +136,10 @@ pnpm --filter dsh-usage-analytics build       # tsc + client bundle（esbuild）
 
 > 说明：
 > - `tsconfig.json` 的 `paths` 把 `@deepseek-ai/*` 类型指向本机 DSH 安装
->   （`C:\Users\xiao\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\*`）。
->   换机器时更新该路径即可。
+>   （本机为 `D:\npm-global\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\*`，
+>   2026-08-17 由原开发机 `C:\Users\xiao\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\*`
+>   更新为本机路径）。换机器时更新该前缀即可，否则 `pnpm --filter @xiaozhengyu/dsh-usage-analytics typecheck`
+>   会报 `Cannot find module '@deepseek-ai/*'`。
 > - 运行期依赖：`node:sqlite`（Node ≥ 22.5；24.x 稳定）、`@deepseek-ai/dsh-home-paths`（peer）、
 >   `zod`（client strict codec）。
 > - 迁移以类型化常量内联（与设计文档 `migrations/*.sql` 等价，避免安装包内路径解析）。
